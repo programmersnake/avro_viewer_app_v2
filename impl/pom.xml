@@ -67,9 +67,13 @@
                 <version>0.0.8</version>
                 <configuration>
                     <!-- Modular mainClass format: module/FQCN -->
-                    <mainClass>
-                        com.dkostin.avro_viewer.app/com.dkostin.avro_viewer.app.Main
-                    </mainClass>
+                    <mainClass>com.dkostin.avro_viewer.app/com.dkostin.avro_viewer.app.Main</mainClass>
+                    <launcher>AvroViewer</launcher>
+                    <jlinkImageName>avroviewer</jlinkImageName>
+                    <jlinkZipName>avroviewer</jlinkZipName>
+                    <noManPages>true</noManPages>
+                    <stripDebug>true</stripDebug>
+                    <noHeaderFiles>true</noHeaderFiles>
                 </configuration>
             </plugin>
 
