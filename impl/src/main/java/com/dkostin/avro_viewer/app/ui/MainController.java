@@ -115,8 +115,6 @@ public class MainController {
             statusLabel.setText("Failed to open: " + f.getName());
             showError("Open Avro failed", ex);
         }
-
-        statusLabel.setText("Open file clicked");
         disablePrevBtnState();
         enableNextBtnState();
     }
