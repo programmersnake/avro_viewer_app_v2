@@ -155,3 +155,43 @@
     -fx-border-color: rgba(37,99,235,0.6);
     -fx-border-width: 1.5;
 }
+
+/* ---------- MenuButton / MenuItem (light) ---------- */
+
+.menu-button.btn {
+    -fx-background-color: rgba(17,24,39,0.04);
+    -fx-border-color: rgba(0,0,0,0.10);
+    -fx-text-fill: #111827;
+}
+
+.menu-button.btn:hover {
+    -fx-background-color: rgba(17,24,39,0.08);
+}
+
+.context-menu {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 10;
+    -fx-padding: 6;
+    -fx-border-color: rgba(0,0,0,0.08);
+    -fx-border-radius: 10;
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 8 14 8 14;
+    -fx-background-radius: 8;
+}
+
+.menu-item .label {
+    -fx-text-fill: #111827;
+    -fx-font-size: 13px;
+}
+
+.menu-item:hover,
+.menu-item:focused {
+    -fx-background-color: rgba(37,99,235,0.14);
+}
+
+.menu-item:armed {
+    -fx-background-color: rgba(37,99,235,0.22);
+}

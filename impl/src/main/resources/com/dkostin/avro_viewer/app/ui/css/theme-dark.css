@@ -40,6 +40,46 @@
     -fx-border-radius: 10;
 }
 
+/* ---------- MenuButton / MenuItem (dark) ---------- */
+
+.menu-button.btn {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-border-color: rgba(255,255,255,0.10);
+    -fx-text-fill: #e7eaf0;
+}
+
+.menu-button.btn:hover {
+    -fx-background-color: rgba(255,255,255,0.12);
+}
+
+.context-menu {
+    -fx-background-color: #1f2430;
+    -fx-background-radius: 10;
+    -fx-padding: 6;
+    -fx-border-color: rgba(255,255,255,0.08);
+    -fx-border-radius: 10;
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 8 14 8 14;
+    -fx-background-radius: 8;
+}
+
+.menu-item .label {
+    -fx-text-fill: #e7eaf0;
+    -fx-font-size: 13px;
+}
+
+.menu-item:hover,
+.menu-item:focused {
+    -fx-background-color: rgba(99,164,255,0.25);
+}
+
+.menu-item:armed {
+    -fx-background-color: rgba(99,164,255,0.35);
+}
+
 .text-field, .combo-box-base {
     -fx-background-color: rgba(255,255,255,0.06);
     -fx-border-color: rgba(255,255,255,0.10);

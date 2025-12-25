@@ -15,7 +15,9 @@
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <MenuButton text="File" styleClass="btn">
-                <MenuItem text="Open .avro file..." onAction="#onOpenFile"/>
+                <items>
+                    <MenuItem text="Open .avro file..." onAction="#onOpenFile"/>
+                </items>
             </MenuButton>
 
             <Region HBox.hgrow="ALWAYS"/>
@@ -107,19 +109,12 @@
                     <Insets top="14" right="14" bottom="14" left="14"/>
                 </padding>
 
-                <TableView fx:id="table" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="colId" text="id" prefWidth="80"/>
-                        <TableColumn fx:id="colTitle" text="title" prefWidth="380"/>
-                        <TableColumn fx:id="colCountry" text="country" prefWidth="220"/>
-                        <TableColumn fx:id="colSalary" text="salary" prefWidth="180"/>
-                    </columns>
-                </TableView>
+                <TableView fx:id="table" VBox.vgrow="ALWAYS"/>
 
                 <HBox spacing="10" alignment="CENTER_LEFT">
-                    <Button text="&lt; Prev" onAction="#onPrevPage" styleClass="btn"/>
+                    <Button fx:id="prevBtn" text="&lt; Prev" onAction="#onPrevPage" styleClass="btn"/>
                     <Label fx:id="pageLabel" text="Page 1" styleClass="muted"/>
-                    <Button text="Next &gt;" onAction="#onNextPage" styleClass="btn"/>
+                    <Button fx:id="nextBtn" text="Next &gt;" onAction="#onNextPage" styleClass="btn"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="statusLabel" text="Loaded 50 records from data.avro." styleClass="muted"/>
                 </HBox>
