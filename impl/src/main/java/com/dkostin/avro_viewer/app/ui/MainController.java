@@ -5,6 +5,7 @@ import com.dkostin.avro_viewer.app.data.AvroFileService;
 import com.dkostin.avro_viewer.app.data.AvroFileServiceImpl;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -13,8 +14,8 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.dkostin.avro_viewer.app.ui.Theme.DARK;
@@ -53,11 +54,7 @@ public class MainController {
 
     private Scene scene;
 
-    private Path currentFile;
-    private Schema currentSchema;
-
-    private int pageIndex = 0;
-    private int pageSize = 50;
+    private final ViewerState state = new ViewerState();
 
     private final AvroFileService avroFileService = new AvroFileServiceImpl();
 
@@ -81,8 +78,7 @@ public class MainController {
 
         maxResultsField.setText("500");
 
-        disablePrevBtnState();
-        disableNextBtnState();
+        updatePagingButtons();
     }
 
     @FXML
@@ -101,21 +97,13 @@ public class MainController {
         fc.setTitle("Open .avro file");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Avro files (*.avro)", "*.avro"));
 
-        File f = fc.showOpenDialog(table.getScene().getWindow());
-        if (f == null) return;
-
-        currentFile = f.toPath();
-        pageIndex = 0;
-
-        try {
-            loadPage(0);
-            statusLabel.setText("Opened: " + f.getName());
-        } catch (Exception ex) {
-            statusLabel.setText("Failed to open: " + f.getName());
-            showError("Open Avro failed", ex);
+        File file = fc.showOpenDialog(table.getScene().getWindow());
+        if (file == null) {
+            return;
         }
-        disablePrevBtnState();
-        enableNextBtnState();
+
+        state.openFile(file.toPath());
+        reloadCurrentPage();
     }
 
     @FXML
@@ -150,60 +138,49 @@ public class MainController {
 
     @FXML
     private void onPrevPage() {
-        if (currentFile == null) {
+        if (state.getFile() == null) {
             return;
         }
-        if (pageIndex <= 1) {
-            disablePrevBtnState();
-        }
-
-        pageIndex--;
-        try {
-            enableNextBtnState();
-            loadPage(pageIndex);
-        } catch (Exception ex) {
-            pageIndex = Math.max(0, ++pageIndex);
-            showError("Prev page failed", ex);
-        }
+        state.prevPage();
+        reloadCurrentPage();
     }
 
     @FXML
     private void onNextPage() {
-        if (currentFile == null) return;
-        pageIndex++;
-
-        enablePrevBtnState();
-
-        try {
-            boolean hasData = loadPage(pageIndex);
-
-            if (!hasData) {
-                disableNextBtnState();
-            }
-        } catch (Exception ex) {
-            pageIndex = Math.max(0, --pageIndex);
-            showError("Next page failed", ex);
+        if (state.getFile() == null) {
+            return;
         }
+        if (!state.isHasNext()) {
+            return;
+        }
+
+        state.nextPage();
+        reloadCurrentPage();
     }
 
-    private boolean loadPage(int idx) throws Exception {
-        Page page = avroFileService.readPage(currentFile, idx, pageSize);
-
-        if (!page.schema().equals(currentSchema)) {
-            currentSchema = page.schema();
-            rebuildColumns(currentSchema);
+    private void reloadCurrentPage() {
+        if (state.getFile() == null) {
+            return;
         }
 
-        var items = FXCollections.<Map<String, Object>>observableArrayList();
-        for (GenericRecord r : page.records()) {
-            items.add(recordToMap(r, currentSchema));
+        try {
+            Page page = avroFileService.readPage(state.getFile(), state.getPageIndex(), state.getPageSize());
+
+            if (state.getSchema() == null || !state.getSchema().equals(page.schema())) {
+                state.setSchema(page.schema());
+                rebuildColumns(page.schema());
+            }
+
+            table.setItems(toItems(page.records(), page.schema()));
+
+            state.setHasNext(page.hasNext());
+            pageLabel.setText("Page " + (state.getPageIndex() + 1));
+            statusLabel.setText("Loaded " + page.records().size() + " records from " + state.getFile().getFileName());
+
+            updatePagingButtons();
+        } catch (Exception ex) {
+            showError("Load page failed", ex);
         }
-
-        table.setItems(items);
-        pageLabel.setText("Page " + (idx + 1));
-        statusLabel.setText("Loaded " + items.size() + " records from " + currentFile.getFileName());
-
-        return !items.isEmpty();
     }
 
     private void rebuildColumns(Schema schema) {
@@ -240,57 +217,32 @@ public class MainController {
         a.showAndWait();
     }
 
-    private void enablePrevBtnState() {
-        if (prevBtn.isDisabled()) {
-            prevBtn.setDisable(false);
-        }
+    private void updatePagingButtons() {
+        prevBtn.setDisable(state.getPageIndex() == 0);
+        nextBtn.setDisable(!state.isHasNext());
     }
 
-    private void enableNextBtnState() {
-        if (nextBtn.isDisabled()) {
-            nextBtn.setDisable(false);
-        }
-    }
-
-    private void disablePrevBtnState() {
-        if (!prevBtn.isDisabled()) {
-            prevBtn.setDisable(true);
-        }
-    }
-
-    private void disableNextBtnState() {
-        if (!nextBtn.isDisabled()) {
-            nextBtn.setDisable(true);
-        }
-    }
 
     private void onPageSizeChanged() {
         Integer newSize = pageSizeCombo.getValue();
-
-        pageSize = newSize;
-        pageSizeValue.setText(String.valueOf(newSize));
-
-        // reset paging state
-        pageIndex = 0;
-        // update states for prevBtn/nextBtn
-        disablePrevBtnState();
-        enableNextBtnState();
-
-        // if file not opened yet - just update ui and that is all
-        if (currentFile == null) {
-            pageLabel.setText("Page 1"); // todo -> it potentially should be in another place (Solid responsibility)
-            statusLabel.setText("Page size set to " + newSize);
+        if (newSize == null) {
             return;
         }
 
-        // reread from 1 page
-        try {
-            loadPage(0);
-            // if hasData=false — means file is empty or filter "ate" everything
-        } catch (Exception ex) {
-            showError("Reload failed after page size change", ex);
-        }
+        state.setPageSize(newSize);
+        pageSizeValue.setText(String.valueOf(newSize));
+
+        reloadCurrentPage(); // якщо file == null, метод сам зробить return
     }
+
+    private ObservableList<Map<String, Object>> toItems(List<GenericRecord> records, Schema schema) {
+        var items = FXCollections.<Map<String, Object>>observableArrayList();
+        for (GenericRecord r : records) {
+            items.add(recordToMap(r, schema));
+        }
+        return items;
+    }
+
 
 }
 

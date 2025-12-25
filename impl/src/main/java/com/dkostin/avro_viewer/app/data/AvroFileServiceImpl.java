@@ -44,7 +44,7 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {1
                 read++;
             }
 
-            return new Page(schema, out, start + read);
+            return new Page(schema, out, r.hasNext());
         }
     }
 
