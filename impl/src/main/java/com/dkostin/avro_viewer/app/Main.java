@@ -1,6 +1,7 @@
 package com.dkostin.avro_viewer.app;
 
 import com.dkostin.avro_viewer.app.ui.MainController;
+import com.dkostin.avro_viewer.app.ui.Theme;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -16,7 +17,7 @@ public class Main extends Application {
         Scene scene = new Scene(loader.load(), 1280, 720);
 
         // Default theme: dark
-        scene.getStylesheets().add(getClass().getResource("/com/dkostin/avro_viewer/app/ui/css/theme-dark.css").toExternalForm());
+        scene.getStylesheets().add(getClass().getResource(Theme.DARK.getCssPath()).toExternalForm());
 
         MainController controller = loader.getController();
         controller.initTheme(scene);
