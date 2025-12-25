@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {1}
+public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {1} {2}
 
     @Override
     public Schema readSchema(Path file) throws IOException {
