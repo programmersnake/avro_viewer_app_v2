@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.dkostin.avro_viewer.app.ui.MainController"
+            styleClass="root">
+
+    <!-- Top bar -->
+    <top>
+        <HBox spacing="10" styleClass="topbar">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            <MenuButton text="File" styleClass="btn">
+                <MenuItem text="Open .avro file..." onAction="#onOpenFile"/>
+            </MenuButton>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Button text="Export → JSON" onAction="#onExportJson" styleClass="btn"/>
+            <Button text="Export → CSV" onAction="#onExportCsv" styleClass="btn"/>
+
+            <!-- THEME SWITCH -->
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="0" right="0" bottom="0" left="10"/>
+                </padding>
+                <Label text="Light" styleClass="muted"/>
+                <ToggleButton fx:id="themeToggle" text="" onAction="#onThemeToggle" styleClass="switch"/>
+                <Label text="Dark" styleClass="muted"/>
+            </HBox>
+
+        </HBox>
+    </top>
+
+    <center>
+        <VBox spacing="12">
+            <padding>
+                <Insets top="14" right="14" bottom="14" left="14"/>
+            </padding>
+
+            <!-- Filters card -->
+            <VBox spacing="10" styleClass="card">
+                <padding>
+                    <Insets top="14" right="14" bottom="14" left="14"/>
+                </padding>
+
+                <Label text="Filters" styleClass="h1"/>
+
+                <GridPane hgap="12" vgap="10">
+                    <columnConstraints>
+                        <ColumnConstraints prefWidth="220"/>
+                        <ColumnConstraints prefWidth="260"/>
+                        <ColumnConstraints prefWidth="320" hgrow="ALWAYS"/>
+                        <ColumnConstraints prefWidth="220"/>
+                    </columnConstraints>
+
+                    <!-- Row 0 -->
+                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                        <Label text="Page size:" styleClass="muted"/>
+                        <HBox spacing="8">
+                            <ComboBox fx:id="pageSizeCombo" prefWidth="170"/>
+                            <Label fx:id="pageSizeValue" text="50" styleClass="pill"/>
+                        </HBox>
+                    </VBox>
+
+                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="1">
+                        <Label text="Operator:" styleClass="muted"/>
+                        <ComboBox fx:id="operatorCombo" prefWidth="240"/>
+                    </VBox>
+
+                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="2">
+                        <Label text="Search:" styleClass="muted"/>
+                        <TextField fx:id="searchField" promptText="Type to search..."/>
+                    </VBox>
+
+                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="3">
+                        <Label text="Max results:" styleClass="muted"/>
+                        <HBox spacing="8">
+                            <TextField fx:id="maxResultsField" prefWidth="110"/>
+                            <Button text="Run search" onAction="#onRunSearch" styleClass="btn-primary"/>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Row 1 -->
+                    <HBox spacing="10" GridPane.rowIndex="1" GridPane.columnIndex="0" GridPane.columnSpan="4">
+                        <Button text="+  Add filter" onAction="#onAddFilter" styleClass="btn"/>
+                        <Button text="Apply filters" onAction="#onApplyFilters" styleClass="btn"/>
+                        <Button text="Clear filters" onAction="#onClearFilters" styleClass="btn-danger"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <!-- Row 2 -->
+                    <Label fx:id="activeFiltersLabel"
+                           text="Active: (none)"
+                           styleClass="muted"
+                           GridPane.rowIndex="2" GridPane.columnIndex="0" GridPane.columnSpan="4"/>
+                </GridPane>
+            </VBox>
+
+            <!-- Table -->
+            <VBox spacing="10" styleClass="card">
+                <padding>
+                    <Insets top="14" right="14" bottom="14" left="14"/>
+                </padding>
+
+                <TableView fx:id="table" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colId" text="id" prefWidth="80"/>
+                        <TableColumn fx:id="colTitle" text="title" prefWidth="380"/>
+                        <TableColumn fx:id="colCountry" text="country" prefWidth="220"/>
+                        <TableColumn fx:id="colSalary" text="salary" prefWidth="180"/>
+                    </columns>
+                </TableView>
+
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Button text="&lt; Prev" onAction="#onPrevPage" styleClass="btn"/>
+                    <Label fx:id="pageLabel" text="Page 1" styleClass="muted"/>
+                    <Button text="Next &gt;" onAction="#onNextPage" styleClass="btn"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="statusLabel" text="Loaded 50 records from data.avro." styleClass="muted"/>
+                </HBox>
+            </VBox>
+
+        </VBox>
+    </center>
+</BorderPane>

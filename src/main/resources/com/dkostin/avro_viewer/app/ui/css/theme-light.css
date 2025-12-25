@@ -1,0 +1,140 @@
+.root {
+    -fx-font-family: "Inter", "Segoe UI", "Arial";
+    -fx-base: #f3f5f9;
+    -fx-background: #f3f5f9;
+    -fx-text-fill: #111827;
+}
+
+.topbar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: rgba(0,0,0,0.08);
+    -fx-border-width: 0 0 1 0;
+}
+
+.card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: rgba(0,0,0,0.08);
+    -fx-padding: 14;
+}
+
+.h1 {
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+}
+
+.muted {
+    -fx-text-fill: rgba(17,24,39,0.65);
+}
+
+.pill {
+    -fx-background-color: rgba(17,24,39,0.06);
+    -fx-padding: 6 10 6 10;
+    -fx-background-radius: 10;
+    -fx-text-fill: rgba(17,24,39,0.85);
+}
+
+.text-field, .combo-box-base {
+    -fx-background-color: rgba(17,24,39,0.04);
+    -fx-border-color: rgba(0,0,0,0.10);
+    -fx-text-fill: #111827;
+}
+
+.btn {
+    -fx-background-color: rgba(17,24,39,0.04);
+    -fx-border-color: rgba(0,0,0,0.10);
+    -fx-text-fill: #111827;
+}
+
+.btn-primary {
+    -fx-background-color: rgba(37, 99, 235, 0.12);
+    -fx-border-color: rgba(37, 99, 235, 0.18);
+    -fx-text-fill: #111827;
+}
+
+.btn-danger {
+    -fx-background-color: rgba(220, 38, 38, 0.10);
+    -fx-border-color: rgba(220, 38, 38, 0.16);
+    -fx-text-fill: #7f1d1d;
+}
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(0,0,0,0.08);
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: rgba(17,24,39,0.03);
+    -fx-background-radius: 12 12 0 0;
+}
+
+.table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(0,0,0,0.04);
+}
+
+/* ---- Table text (light theme) ---- */
+
+.table-view .column-header .label {
+    -fx-text-fill: #111827;
+}
+
+.table-view .table-cell {
+    -fx-text-fill: #111827;
+}
+
+.table-row-cell:selected .table-cell,
+.table-row-cell:filled:selected .table-cell,
+.table-row-cell:focused .table-cell,
+.table-row-cell:filled:focused .table-cell {
+    -fx-text-fill: #111827;
+}
+
+.table-row-cell:selected,
+.table-row-cell:filled:selected {
+    -fx-background-color: rgba(37, 99, 235, 0.12);
+}
+
+.table-row-cell:filled:hover {
+    -fx-background-color: rgba(17,24,39,0.05);
+}
+
+/* Switch */
+.switch {
+    -fx-background-radius: 999;
+    -fx-min-width: 44;
+    -fx-min-height: 22;
+    -fx-background-color: rgba(17,24,39,0.12);
+    -fx-border-color: rgba(0,0,0,0.10);
+    -fx-border-radius: 999;
+    -fx-padding: 0;
+}
+
+.switch:selected {
+    -fx-background-color: rgba(37,99,235,0.18);
+    -fx-border-color: rgba(37,99,235,0.22);
+}
+
+/* ---------- Buttons hover (light) ---------- */
+
+.button {
+    -fx-cursor: hand;
+    -fx-transition: all 120ms ease-in-out;
+}
+
+.button:hover {
+    -fx-background-color: rgba(17,24,39,0.08);
+    -fx-border-color: rgba(17,24,39,0.18);
+}
+
+.button:pressed {
+    -fx-background-color: rgba(17,24,39,0.14);
+}
+
+.button:focused {
+    -fx-border-color: rgba(37,99,235,0.6);
+    -fx-border-width: 1.5;
+}
