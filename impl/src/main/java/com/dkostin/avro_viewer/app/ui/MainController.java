@@ -16,7 +16,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.dkostin.avro_viewer.app.ui.Theme.DARK;
 import static com.dkostin.avro_viewer.app.ui.Theme.LIGHT;
@@ -57,8 +56,8 @@ public class MainController {
     private Path currentFile;
     private Schema currentSchema;
 
-    private final AtomicInteger pageIndex = new AtomicInteger();
-    private final AtomicInteger pageSize = new AtomicInteger(50); // можеш підвʼязати до pageSizeCombo
+    private int pageIndex = 0;
+    private int pageSize = 50;
 
     private final AvroFileService avroFileService = new AvroFileServiceImpl();
 
@@ -106,7 +105,7 @@ public class MainController {
         if (f == null) return;
 
         currentFile = f.toPath();
-        pageIndex.set(0);
+        pageIndex = 0;
 
         try {
             loadPage(0);
@@ -154,16 +153,16 @@ public class MainController {
         if (currentFile == null) {
             return;
         }
-        if (pageIndex.get() <= 1) {
+        if (pageIndex <= 1) {
             disablePrevBtnState();
         }
 
-        pageIndex.decrementAndGet();
+        pageIndex--;
         try {
             enableNextBtnState();
-            loadPage(pageIndex.get());
+            loadPage(pageIndex);
         } catch (Exception ex) {
-            pageIndex.set(Math.max(0, pageIndex.incrementAndGet()));
+            pageIndex = Math.max(0, ++pageIndex);
             showError("Prev page failed", ex);
         }
     }
@@ -171,24 +170,24 @@ public class MainController {
     @FXML
     private void onNextPage() {
         if (currentFile == null) return;
-        pageIndex.incrementAndGet();
+        pageIndex++;
 
         enablePrevBtnState();
 
         try {
-            boolean hasData = loadPage(pageIndex.get());
+            boolean hasData = loadPage(pageIndex);
 
             if (!hasData) {
                 disableNextBtnState();
             }
         } catch (Exception ex) {
-            pageIndex.set(Math.max(0, pageIndex.decrementAndGet()));
+            pageIndex = Math.max(0, --pageIndex);
             showError("Next page failed", ex);
         }
     }
 
     private boolean loadPage(int idx) throws Exception {
-        Page page = avroFileService.readPage(currentFile, idx, pageSize.get());
+        Page page = avroFileService.readPage(currentFile, idx, pageSize);
 
         if (!page.schema().equals(currentSchema)) {
             currentSchema = page.schema();
@@ -268,11 +267,11 @@ public class MainController {
     private void onPageSizeChanged() {
         Integer newSize = pageSizeCombo.getValue();
 
-        pageSize.set(newSize);
+        pageSize = newSize;
         pageSizeValue.setText(String.valueOf(newSize));
 
         // reset paging state
-        pageIndex.set(0);
+        pageIndex = 0;
         // update states for prevBtn/nextBtn
         disablePrevBtnState();
         enableNextBtnState();
@@ -286,7 +285,7 @@ public class MainController {
 
         // reread from 1 page
         try {
-            boolean hasData = loadPage(0);
+            loadPage(0);
             // if hasData=false — means file is empty or filter "ate" everything
         } catch (Exception ex) {
             showError("Reload failed after page size change", ex);
