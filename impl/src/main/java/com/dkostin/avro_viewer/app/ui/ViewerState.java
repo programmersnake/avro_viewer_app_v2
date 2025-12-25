@@ -15,7 +15,7 @@ public final class ViewerState {
 
     private int pageIndex;
 
-    private int pageSize;
+    private int pageSize = 50; // default pageSize is 50
 
     @Setter
     private boolean hasNext;

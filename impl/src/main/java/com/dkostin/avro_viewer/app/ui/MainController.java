@@ -73,6 +73,8 @@ public class MainController {
         pageSizeValue.setText(String.valueOf(pageSizeCombo.getValue()));
         pageSizeCombo.setOnAction(_ -> onPageSizeChanged());
 
+        state.setPageSize(pageSizeCombo.getValue());
+
         operatorCombo.setItems(FXCollections.observableArrayList("(all)", "AND", "OR"));
         operatorCombo.setValue("(all)");
 
@@ -218,10 +220,10 @@ public class MainController {
     }
 
     private void updatePagingButtons() {
-        prevBtn.setDisable(state.getPageIndex() == 0);
-        nextBtn.setDisable(!state.isHasNext());
+        boolean noFile = state.getFile() == null;
+        prevBtn.setDisable(noFile || state.getPageIndex() == 0);
+        nextBtn.setDisable(noFile || !state.isHasNext());
     }
-
 
     private void onPageSizeChanged() {
         Integer newSize = pageSizeCombo.getValue();
@@ -232,7 +234,7 @@ public class MainController {
         state.setPageSize(newSize);
         pageSizeValue.setText(String.valueOf(newSize));
 
-        reloadCurrentPage(); // якщо file == null, метод сам зробить return
+        reloadCurrentPage();
     }
 
     private ObservableList<Map<String, Object>> toItems(List<GenericRecord> records, Schema schema) {
