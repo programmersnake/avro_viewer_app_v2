@@ -75,12 +75,15 @@ public class MainController {
         pageSizeCombo.setItems(FXCollections.observableArrayList(25, 50, 100, 200, 500));
         pageSizeCombo.setValue(50);
         pageSizeValue.setText(String.valueOf(pageSizeCombo.getValue()));
-        pageSizeCombo.setOnAction(_ -> pageSizeValue.setText(String.valueOf(pageSizeCombo.getValue())));
+        pageSizeCombo.setOnAction(_ -> onPageSizeChanged());
 
         operatorCombo.setItems(FXCollections.observableArrayList("(all)", "AND", "OR"));
         operatorCombo.setValue("(all)");
 
         maxResultsField.setText("500");
+
+        disablePrevBtnState();
+        disableNextBtnState();
     }
 
     @FXML
@@ -115,6 +118,7 @@ public class MainController {
 
         statusLabel.setText("Open file clicked");
         disablePrevBtnState();
+        enableNextBtnState();
     }
 
     @FXML
@@ -152,13 +156,13 @@ public class MainController {
         if (currentFile == null) {
             return;
         }
-        if (pageIndex.get() <= 1 && !prevBtn.isDisabled()) {
+        if (pageIndex.get() <= 1) {
             disablePrevBtnState();
         }
 
         pageIndex.decrementAndGet();
         try {
-            resetNextBtnState();
+            enableNextBtnState();
             loadPage(pageIndex.get());
         } catch (Exception ex) {
             pageIndex.set(Math.max(0, pageIndex.incrementAndGet()));
@@ -171,9 +175,7 @@ public class MainController {
         if (currentFile == null) return;
         pageIndex.incrementAndGet();
 
-        if (prevBtn.isDisabled()) {
-            resetPrevBtnState();
-        }
+        enablePrevBtnState();
 
         try {
             boolean hasData = loadPage(pageIndex.get());
@@ -241,20 +243,57 @@ public class MainController {
         a.showAndWait();
     }
 
-    private void resetPrevBtnState() {
-        prevBtn.setDisable(false);
+    private void enablePrevBtnState() {
+        if (prevBtn.isDisabled()) {
+            prevBtn.setDisable(false);
+        }
     }
 
-    private void resetNextBtnState() {
-        nextBtn.setDisable(false);
+    private void enableNextBtnState() {
+        if (nextBtn.isDisabled()) {
+            nextBtn.setDisable(false);
+        }
     }
 
     private void disablePrevBtnState() {
-        prevBtn.setDisable(true);
+        if (!prevBtn.isDisabled()) {
+            prevBtn.setDisable(true);
+        }
     }
 
     private void disableNextBtnState() {
-        nextBtn.setDisable(true);
+        if (!nextBtn.isDisabled()) {
+            nextBtn.setDisable(true);
+        }
     }
+
+    private void onPageSizeChanged() {
+        Integer newSize = pageSizeCombo.getValue();
+
+        pageSize.set(newSize);
+        pageSizeValue.setText(String.valueOf(newSize));
+
+        // reset paging state
+        pageIndex.set(0);
+        // update states for prevBtn/nextBtn
+        disablePrevBtnState();
+        enableNextBtnState();
+
+        // if file not opened yet - just update ui and that is all
+        if (currentFile == null) {
+            pageLabel.setText("Page 1"); // todo -> it potentially should be in another place (Solid responsibility)
+            statusLabel.setText("Page size set to " + newSize);
+            return;
+        }
+
+        // reread from 1 page
+        try {
+            boolean hasData = loadPage(0);
+            // if hasData=false — means file is empty or filter "ate" everything
+        } catch (Exception ex) {
+            showError("Reload failed after page size change", ex);
+        }
+    }
+
 }
 
