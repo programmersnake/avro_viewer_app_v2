@@ -1,7 +1,5 @@
 package com.dkostin.avro_viewer.app;
 
-//import com.dkostin.avro_viewer.app.ui.Controller;
-
 import com.dkostin.avro_viewer.app.ui.MainController;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

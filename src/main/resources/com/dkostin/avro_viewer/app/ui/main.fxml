@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.dkostin.avro_viewer.app.ui.MainController"
@@ -29,7 +29,7 @@
                     <Insets top="0" right="0" bottom="0" left="10"/>
                 </padding>
                 <Label text="Light" styleClass="muted"/>
-                <ToggleButton fx:id="themeToggle" text="" onAction="#onThemeToggle" styleClass="switch"/>
+                <ToggleButton fx:id="themeToggle" text="⚪⚫" onAction="#onThemeToggle" styleClass="switch"/>
                 <Label text="Dark" styleClass="muted"/>
             </HBox>
 

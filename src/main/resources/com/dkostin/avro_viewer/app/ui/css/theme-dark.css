@@ -113,6 +113,7 @@
 
 /* Switch */
 .switch {
+    -fx-cursor: hand;
     -fx-background-radius: 999;
     -fx-min-width: 44;
     -fx-min-height: 22;
@@ -127,8 +128,21 @@
     -fx-border-color: rgba(99,164,255,0.45);
 }
 
-.switch::before { /* (JavaFX CSS doesn't support ::before, left as marker) */ }
+.switch:hover {
+    -fx-background-color: rgba(255,255,255,0.22);
+}
 
+.switch:selected:hover {
+    -fx-background-color: rgba(99,164,255,0.45);
+}
+
+.switch:focused {
+    -fx-border-color: rgba(99,164,255,0.65);
+}
+
+.switch:pressed {
+    -fx-background-color: rgba(127,127,127,0.30);
+}
 
 /* ---------- Buttons hover (dark) ---------- */
 

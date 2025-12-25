@@ -104,6 +104,7 @@
 
 /* Switch */
 .switch {
+    -fx-cursor: hand;
     -fx-background-radius: 999;
     -fx-min-width: 44;
     -fx-min-height: 22;
@@ -116,6 +117,22 @@
 .switch:selected {
     -fx-background-color: rgba(37,99,235,0.18);
     -fx-border-color: rgba(37,99,235,0.22);
+}
+
+.switch:hover {
+    -fx-background-color: rgba(17,24,39,0.18);
+}
+
+.switch:selected:hover {
+    -fx-background-color: rgba(37,99,235,0.30);
+}
+
+.switch:focused {
+    -fx-border-color: rgba(37,99,235,0.55);
+}
+
+.switch:pressed {
+    -fx-background-color: rgba(127,127,127,0.30);
 }
 
 /* ---------- Buttons hover (light) ---------- */
