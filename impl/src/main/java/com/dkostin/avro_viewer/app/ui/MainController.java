@@ -3,6 +3,7 @@ package com.dkostin.avro_viewer.app.ui;
 import com.dkostin.avro_viewer.app.common.Page;
 import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.data.AvroFileService;
+import com.dkostin.avro_viewer.app.data.ExportService;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -58,12 +59,14 @@ public class MainController {
     private Scene scene;
 
     private final AvroFileService avroFileService;
+    private final ExportService exportService;
     private final ViewerState state;
 
     private final JsonRowViewerWindow jsonRowViewerWindow;
 
     public MainController(AppContext ctx) {
         avroFileService = ctx.avroFileService();
+        exportService = ctx.exportService();
         state = ctx.viewerState();
         jsonRowViewerWindow = ctx.jsonWindow();
     }
@@ -157,12 +160,49 @@ public class MainController {
 
     @FXML
     private void onExportJson() {
-        statusLabel.setText("Export JSON clicked");
+        if (table.getItems() == null || table.getItems().isEmpty()) {
+            statusLabel.setText("Nothing to export");
+            return;
+        }
+
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export to JSON");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON (*.json)", "*.json"));
+        fc.setInitialFileName("export-page-" + (state.getPageIndex() + 1) + ".json");
+
+        File out = fc.showSaveDialog(table.getScene().getWindow());
+        if (out == null) return;
+
+        try {
+            exportService.exportTableToJson(out.toPath(), table.getItems());
+            statusLabel.setText("Exported JSON: " + out.getName());
+        } catch (Exception ex) {
+            showError("Export JSON failed", ex);
+        }
     }
 
     @FXML
     private void onExportCsv() {
-        statusLabel.setText("Export CSV clicked");
+        if (table.getItems() == null || table.getItems().isEmpty()) {
+            statusLabel.setText("Nothing to export");
+            return;
+        }
+
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export to CSV");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV (*.csv)", "*.csv"));
+        fc.setInitialFileName("export-page-" + (state.getPageIndex() + 1) + ".csv");
+
+        File out = fc.showSaveDialog(table.getScene().getWindow());
+        if (out == null) return;
+
+        try {
+            // columns order from current schema (stable)
+            exportService.exportTableToCsv(out.toPath(), table.getItems(), state.getSchema());
+            statusLabel.setText("Exported CSV: " + out.getName());
+        } catch (Exception ex) {
+            showError("Export CSV failed", ex);
+        }
     }
 
     @FXML
