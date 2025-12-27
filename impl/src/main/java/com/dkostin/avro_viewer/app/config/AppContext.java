@@ -2,19 +2,34 @@ package com.dkostin.avro_viewer.app.config;
 
 import com.dkostin.avro_viewer.app.data.AvroFileService;
 import com.dkostin.avro_viewer.app.data.AvroFileServiceImpl;
+import com.dkostin.avro_viewer.app.ui.JsonRowViewerWindow;
 import com.dkostin.avro_viewer.app.ui.ViewerState;
 
 public final class AppContext {
 
-    private final AvroFileService avroFileService = new AvroFileServiceImpl();
-    private final ViewerState viewerState = new ViewerState();
+    private AvroFileService avroFileService;
+    private ViewerState viewerState;
+    private JsonRowViewerWindow jsonRowViewerWindow;
 
     public AvroFileService avroFileService() {
+        if (avroFileService == null) {
+            avroFileService = new AvroFileServiceImpl();
+        }
         return avroFileService;
     }
 
     public ViewerState viewerState() {
+        if (viewerState == null) {
+            viewerState = new ViewerState();
+        }
         return viewerState;
+    }
+
+    public JsonRowViewerWindow jsonWindow() {
+        if (jsonRowViewerWindow == null) {
+            jsonRowViewerWindow = new JsonRowViewerWindow();
+        }
+        return jsonRowViewerWindow;
     }
 
 }

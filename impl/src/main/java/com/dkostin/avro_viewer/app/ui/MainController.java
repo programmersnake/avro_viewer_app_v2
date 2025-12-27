@@ -3,13 +3,13 @@ package com.dkostin.avro_viewer.app.ui;
 import com.dkostin.avro_viewer.app.common.Page;
 import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.data.AvroFileService;
-import com.dkostin.avro_viewer.app.data.AvroFileServiceImpl;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.stage.FileChooser;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.dkostin.avro_viewer.app.ui.ErrorAlert.showError;
 import static com.dkostin.avro_viewer.app.ui.Theme.DARK;
 import static com.dkostin.avro_viewer.app.ui.Theme.LIGHT;
 
@@ -53,14 +54,18 @@ public class MainController {
     @FXML
     private TableView<Map<String, Object>> table;
 
+
     private Scene scene;
 
     private final AvroFileService avroFileService;
     private final ViewerState state;
 
+    private final JsonRowViewerWindow jsonRowViewerWindow;
+
     public MainController(AppContext ctx) {
         avroFileService = ctx.avroFileService();
         state = ctx.viewerState();
+        jsonRowViewerWindow = ctx.jsonWindow();
     }
 
     public void initTheme(Scene scene) {
@@ -68,15 +73,13 @@ public class MainController {
         // dark by default
         themeToggle.setSelected(true);
         themeToggle.setTooltip(new Tooltip("Toggle Light/Dark theme"));
+        jsonRowViewerWindow.syncStyles(scene.getStylesheets());
     }
 
     @FXML
     private void initialize() {
-        // filters controls
-        pageSizeCombo.setItems(FXCollections.observableArrayList(25, 50, 100, 200, 500));
-        pageSizeCombo.setValue(50);
-        pageSizeValue.setText(String.valueOf(pageSizeCombo.getValue()));
-        pageSizeCombo.setOnAction(_ -> onPageSizeChanged());
+        initPageSize();
+        initTableActions();
 
         state.setPageSize(pageSizeCombo.getValue());
 
@@ -88,13 +91,45 @@ public class MainController {
         updatePagingButtons();
     }
 
+    private void initPageSize() {
+        pageSizeCombo.setItems(FXCollections.observableArrayList(25, 50, 100, 200, 500));
+        pageSizeCombo.setValue(50);
+        pageSizeValue.setText(String.valueOf(pageSizeCombo.getValue()));
+        pageSizeCombo.setOnAction(_ -> onPageSizeChanged());
+    }
+
+    private void initTableActions() {
+        table.setRowFactory(_ -> {
+            TableRow<Map<String, Object>> row = new TableRow<>();
+            row.setOnMouseClicked(e -> {
+                if (e.getClickCount() == 2 && !row.isEmpty()) {
+                    jsonRowViewerWindow.openJsonWindow(row.getItem(), table.getScene());
+                }
+            });
+            return row;
+        });
+
+        table.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER) {
+                Map<String, Object> item = table.getSelectionModel().getSelectedItem();
+                if (item != null) {
+                    jsonRowViewerWindow.openJsonWindow(item, table.getScene());
+                }
+                e.consume();
+            }
+        });
+    }
+
     @FXML
     private void onThemeToggle() {
-        if (scene == null) return;
+        if (scene == null) {
+            return;
+        }
 
         scene.getStylesheets().clear();
         var selectedTheme = themeToggle.isSelected() ? DARK : LIGHT;
         scene.getStylesheets().add(getClass().getResource(selectedTheme.getCssPath()).toExternalForm());
+        jsonRowViewerWindow.syncStyles(scene.getStylesheets());
     }
 
     // --- Actions (placeholders) ---
@@ -109,8 +144,15 @@ public class MainController {
             return;
         }
 
-        state.openFile(file.toPath());
-        reloadCurrentPage();
+        var prevFile = state.getFile();
+        try {
+            state.openFile(file.toPath());
+            reloadCurrentPage();
+        } catch (Exception ex) {
+            state.openFile(prevFile);
+            showError("Error to open file with path: " + file.toPath(), ex);
+        }
+
     }
 
     @FXML
@@ -214,14 +256,6 @@ public class MainController {
             m.put(f.name(), r.get(f.name()));
         }
         return m;
-    }
-
-    private void showError(String title, Exception ex) {
-        Alert a = new Alert(Alert.AlertType.ERROR);
-        a.setTitle(title);
-        a.setHeaderText(ex.getClass().getSimpleName());
-        a.setContentText(ex.getMessage());
-        a.showAndWait();
     }
 
     private void updatePagingButtons() {
