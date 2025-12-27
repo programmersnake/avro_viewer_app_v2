@@ -1,5 +1,7 @@
 package com.dkostin.avro_viewer.app;
 
+import com.dkostin.avro_viewer.app.config.AppContext;
+import com.dkostin.avro_viewer.app.config.AppControllerFactory;
 import com.dkostin.avro_viewer.app.ui.MainController;
 import com.dkostin.avro_viewer.app.ui.Theme;
 import javafx.application.Application;
@@ -13,7 +15,12 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+        AppContext ctx = new AppContext();
+        AppControllerFactory controllerFactory = new AppControllerFactory(ctx);
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/dkostin/avro_viewer/app/ui/main.fxml"));
+        loader.setControllerFactory(controllerFactory::create);
+
         Scene scene = new Scene(loader.load(), 1280, 720);
 
         // Default theme: dark

@@ -1,6 +1,7 @@
 package com.dkostin.avro_viewer.app.ui;
 
 import com.dkostin.avro_viewer.app.common.Page;
+import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.data.AvroFileService;
 import com.dkostin.avro_viewer.app.data.AvroFileServiceImpl;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -54,9 +55,13 @@ public class MainController {
 
     private Scene scene;
 
-    private final ViewerState state = new ViewerState();
+    private final AvroFileService avroFileService;
+    private final ViewerState state;
 
-    private final AvroFileService avroFileService = new AvroFileServiceImpl();
+    public MainController(AppContext ctx) {
+        avroFileService = ctx.avroFileService();
+        state = ctx.viewerState();
+    }
 
     public void initTheme(Scene scene) {
         this.scene = scene;

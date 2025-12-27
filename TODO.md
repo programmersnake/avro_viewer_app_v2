@@ -1,4 +1,4 @@
-1. Add Spring Boot for DI etc
+TODO:
 2. Maybe add small caffeine cache in AvroFileServiceImpl? (maxSize=3-5; expirationTime=???). With complex cache key like: pageSize_pageIndex... something else
 3. Add Indices for reading avro by blocks. Cursor vs Index, hmm 🤔
 4. ![img.png](doc/img.png) Remove label for the pageSize. Redo pagination to have less pageSize selector.
@@ -6,3 +6,7 @@
 6. For future, for filters, will be good to have type "between", and have instead of 1 condition for value - two. But to be analyzed how better to do.
 
 100. debounce??? Should we have it? For now - 100% no.
+
+
+DONE:
+1. ~~Add Spring Boot for DI etc~~ not spring but my own small DI
