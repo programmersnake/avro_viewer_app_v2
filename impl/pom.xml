@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.dkostin.avro_viewer.app</groupId>
         <artifactId>avro-viewer-app</artifactId>
-        <version>0.1-SNAPSHOT</version>
+        <version>0.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>avro-viewer-app-impl</artifactId>
