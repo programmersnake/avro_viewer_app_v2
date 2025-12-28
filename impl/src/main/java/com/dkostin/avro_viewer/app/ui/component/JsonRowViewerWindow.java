@@ -1,4 +1,4 @@
-package com.dkostin.avro_viewer.app.ui;
+package com.dkostin.avro_viewer.app.ui.component;
 
 import com.dkostin.avro_viewer.app.data.JsonSerializer;
 import javafx.collections.ObservableList;
@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 
-import static com.dkostin.avro_viewer.app.ui.ErrorAlert.showError;
+import static com.dkostin.avro_viewer.app.ui.component.ErrorAlert.showError;
 
 @RequiredArgsConstructor
 public class JsonRowViewerWindow {

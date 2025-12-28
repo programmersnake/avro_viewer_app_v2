@@ -1,5 +1,7 @@
-package com.dkostin.avro_viewer.app.filter;
+package com.dkostin.avro_viewer.app.config;
 
+import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.filter.MatchOperation;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.List;

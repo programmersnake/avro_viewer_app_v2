@@ -4,9 +4,9 @@ import com.dkostin.avro_viewer.app.data.AvroFileService;
 import com.dkostin.avro_viewer.app.data.AvroFileServiceImpl;
 import com.dkostin.avro_viewer.app.data.ExportService;
 import com.dkostin.avro_viewer.app.data.ExportServiceImpl;
-import com.dkostin.avro_viewer.app.filter.FilterPredicateFactory;
-import com.dkostin.avro_viewer.app.ui.JsonRowViewerWindow;
-import com.dkostin.avro_viewer.app.ui.ViewerState;
+import com.dkostin.avro_viewer.app.logic.ViewerService;
+import com.dkostin.avro_viewer.app.ui.component.JsonRowViewerWindow;
+import com.dkostin.avro_viewer.app.domain.ViewerState;
 
 public final class AppContext {
 
@@ -15,6 +15,7 @@ public final class AppContext {
     private JsonRowViewerWindow jsonRowViewerWindow;
     private ExportService exportService;
     private FilterPredicateFactory filterPredicateFactory;
+    private ViewerService viewerService;
 
     public AvroFileService avroFileService() {
         if (avroFileService == null) {
@@ -49,6 +50,13 @@ public final class AppContext {
             filterPredicateFactory = new FilterPredicateFactory();
         }
         return filterPredicateFactory;
+    }
+
+    public ViewerService viewerService() {
+        if (viewerService == null) {
+            viewerService = new ViewerService(avroFileService(), exportService(), viewerState());
+        }
+        return viewerService;
     }
 
 }
