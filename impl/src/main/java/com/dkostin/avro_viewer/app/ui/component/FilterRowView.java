@@ -1,7 +1,7 @@
-package com.dkostin.avro_viewer.app.ui;
+package com.dkostin.avro_viewer.app.ui.component;
 
-import com.dkostin.avro_viewer.app.filter.FilterRowModel;
-import com.dkostin.avro_viewer.app.filter.MatchOperation;
+import com.dkostin.avro_viewer.app.domain.filter.FilterRowModel;
+import com.dkostin.avro_viewer.app.domain.filter.MatchOperation;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;

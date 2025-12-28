@@ -1,6 +1,6 @@
 package com.dkostin.avro_viewer.app.config;
 
-import com.dkostin.avro_viewer.app.ui.MainController;
+import com.dkostin.avro_viewer.app.ui.controller.MainController;
 
 import java.util.HashMap;
 import java.util.Map;

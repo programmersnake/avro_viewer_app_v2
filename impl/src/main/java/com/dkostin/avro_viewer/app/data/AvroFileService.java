@@ -1,7 +1,7 @@
 package com.dkostin.avro_viewer.app.data;
 
-import com.dkostin.avro_viewer.app.common.Page;
-import com.dkostin.avro_viewer.app.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.Page;
+import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
 import org.apache.avro.Schema;
 
 import java.io.IOException;

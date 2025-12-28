@@ -1,8 +1,8 @@
 package com.dkostin.avro_viewer.app.data;
 
-import com.dkostin.avro_viewer.app.common.Page;
-import com.dkostin.avro_viewer.app.filter.FilterCriterion;
-import com.dkostin.avro_viewer.app.filter.FilterPredicateFactory;
+import com.dkostin.avro_viewer.app.domain.Page;
+import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import lombok.RequiredArgsConstructor;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
@@ -72,7 +72,6 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2
         long scanned = 0;
         boolean truncated = false;
 
-        // DataFileReader сам вміє працювати з codec (snappy) якщо є snappy-java в deps
         try (var reader = new org.apache.avro.file.DataFileReader<>(
                 file.toFile(),
                 new org.apache.avro.generic.GenericDatumReader<GenericRecord>()

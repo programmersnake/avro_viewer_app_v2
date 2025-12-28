@@ -10,4 +10,7 @@ module com.dkostin.avro_viewer.app {
     opens com.dkostin.avro_viewer.app.config to javafx.fxml;
 
     exports com.dkostin.avro_viewer.app;
+    opens com.dkostin.avro_viewer.app.ui.component to javafx.fxml;
+    opens com.dkostin.avro_viewer.app.ui.controller to javafx.fxml;
+    opens com.dkostin.avro_viewer.app.domain to javafx.fxml;
 }
