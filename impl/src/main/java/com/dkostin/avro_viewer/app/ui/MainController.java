@@ -135,18 +135,18 @@ public class MainController {
         filtersBox.getChildren().add(view.root());
     }
 
-    @FXML
-    public void onRemoveFilter(ActionEvent e) {
-        Button btn = (Button) e.getSource();
-        // parent = HBox row
-        var row = btn.getParent();
-        filtersBox.getChildren().remove(row);
-
-        // не даємо зробити 0 рядків
-        if (filtersBox.getChildren().isEmpty()) {
-            addFilterRow();
-        }
-    }
+//    @FXML
+//    public void onRemoveFilter(ActionEvent e) {
+//        Button btn = (Button) e.getSource();
+//        // parent = HBox row
+//        var row = btn.getParent();
+//        filtersBox.getChildren().remove(row);
+//
+//        // should be more than 1 row
+//        if (filtersBox.getChildren().isEmpty()) {
+//            addFilterRow();
+//        }
+//    }
 
     private void removeFilterRow(FilterRowView view) {
         filtersBox.getChildren().remove(view.root());
