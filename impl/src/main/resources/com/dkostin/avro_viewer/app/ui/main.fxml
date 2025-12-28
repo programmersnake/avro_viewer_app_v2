@@ -45,66 +45,55 @@
             </padding>
 
             <!-- Filters card -->
-            <VBox spacing="10" styleClass="card">
+            <VBox spacing="12" styleClass="card">
                 <padding>
                     <Insets top="14" right="14" bottom="14" left="14"/>
                 </padding>
 
-                <Label text="Filters" styleClass="h1"/>
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="Filters" styleClass="h1"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="All filters are combined with AND" styleClass="muted"/>
+                </HBox>
 
-                <GridPane hgap="12" vgap="10">
-                    <columnConstraints>
-                        <ColumnConstraints prefWidth="220"/>
-                        <ColumnConstraints prefWidth="260"/>
-                        <ColumnConstraints prefWidth="320" hgrow="ALWAYS"/>
-                        <ColumnConstraints prefWidth="220"/>
-                    </columnConstraints>
-
-                    <!-- Row 0 -->
-                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                <!-- Global controls row -->
+                <HBox spacing="12" alignment="CENTER_LEFT">
+                    <VBox spacing="6">
                         <Label text="Page size:" styleClass="muted"/>
-                        <HBox spacing="8">
-                            <ComboBox fx:id="pageSizeCombo" prefWidth="170"/>
-                            <Label fx:id="pageSizeValue" text="50" styleClass="pill"/>
-                        </HBox>
+                        <ComboBox fx:id="pageSizeCombo" prefWidth="190"/>
                     </VBox>
 
-                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="1">
-                        <Label text="Operator:" styleClass="muted"/>
-                        <ComboBox fx:id="operatorCombo" prefWidth="240"/>
+                    <VBox spacing="6">
+                        <Label text="Max search results:" styleClass="muted"/>
+                        <TextField fx:id="maxResultsField" prefWidth="140" promptText="e.g. 500" text="500"/>
                     </VBox>
 
-                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="2">
-                        <Label text="Search:" styleClass="muted"/>
-                        <TextField fx:id="searchField" promptText="Type to search..."/>
-                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
 
-                    <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="3">
-                        <Label text="Max results:" styleClass="muted"/>
-                        <HBox spacing="8">
-                            <TextField fx:id="maxResultsField" prefWidth="110"/>
-                            <Button text="Run search" onAction="#onRunSearch" styleClass="btn-primary"/>
-                        </HBox>
-                    </VBox>
+                    <Button text="Apply" onAction="#onApplyFilters" styleClass="btn-primary"/>
+                    <Button text="Clear" onAction="#onClearFilters" styleClass="btn-danger"/>
+                </HBox>
 
-                    <!-- Row 1 -->
-                    <HBox spacing="10" GridPane.rowIndex="1" GridPane.columnIndex="0" GridPane.columnSpan="4">
-                        <Button text="+  Add filter" onAction="#onAddFilter" styleClass="btn"/>
-                        <Button text="Apply filters" onAction="#onApplyFilters" styleClass="btn"/>
-                        <Button text="Clear filters" onAction="#onClearFilters" styleClass="btn-danger"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                    </HBox>
+                <!-- Filters list (dynamic rows will be added here) -->
+                <ScrollPane fitToWidth="true" pannable="true"
+                            vbarPolicy="AS_NEEDED" hbarPolicy="NEVER"
+                            prefViewportHeight="100"
+                            maxHeight="280"
+                            styleClass="filters-scroll">
+                    <content>
+                        <VBox fx:id="filtersBox" spacing="10" styleClass="filters-list"/>
+                    </content>
+                </ScrollPane>
 
-                    <!-- Row 2 -->
-                    <Label fx:id="activeFiltersLabel"
-                           text="Active: (none)"
-                           styleClass="muted"
-                           GridPane.rowIndex="2" GridPane.columnIndex="0" GridPane.columnSpan="4"/>
-                </GridPane>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Button text="+ Add filter" onAction="#onAddFilter" styleClass="btn"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="resultsLabel" styleClass="muted"/>
+                </HBox>
             </VBox>
 
             <!-- Table -->
-            <VBox spacing="10" styleClass="card">
+            <VBox spacing="10" styleClass="card" VBox.vgrow="ALWAYS">
                 <padding>
                     <Insets top="14" right="14" bottom="14" left="14"/>
                 </padding>
