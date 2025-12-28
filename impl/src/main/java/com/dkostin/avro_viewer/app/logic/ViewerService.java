@@ -8,7 +8,6 @@ import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.ObservableList;
-import org.apache.avro.Schema;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -73,13 +72,6 @@ public class ViewerService {
 
     public void setPageSize(int pageSize) {
         state.setPageSize(pageSize);
-    }
-
-    /**
-     * Current Avro schema (last read record)
-     */
-    public Schema getCurrentSchema() {
-        return state.getSchema();
     }
 
     /**
