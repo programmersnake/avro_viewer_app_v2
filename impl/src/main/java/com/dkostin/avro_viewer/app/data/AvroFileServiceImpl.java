@@ -26,7 +26,7 @@ import java.util.*;
  * - search() intentionally opens its own reader (separate flow).
  */
 @RequiredArgsConstructor
-public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2}
+public class AvroFileServiceImpl implements AvroFileService {
 
     private static final int DEFAULT_PAGE_CACHE_SIZE = 8;
 
@@ -39,20 +39,6 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2
 
     // open reading session for sequential Next
     private Session session;
-
-    @Override
-    public Schema readSchema(Path file) throws IOException {
-        Objects.requireNonNull(file, "file");
-        // If session is already open for this file, reuse it
-        synchronized (lock) {
-            if (session != null && session.isSameFile(file)) {
-                return session.schema;
-            }
-        }
-        try (DataFileReader<GenericRecord> r = open(file)) {
-            return r.getSchema();
-        }
-    }
 
     @Override
     public Page readPage(Path file, int pageIndex, int pageSize) throws IOException {
@@ -123,16 +109,6 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2
         }
     }
 
-    /**
-     * Optional hook. Call from app shutdown if you want explicit resource release.
-     */
-    public void closeSession() {
-        synchronized (lock) {
-            closeSessionUnsafe();
-            pageCache.clear();
-        }
-    }
-
     // -------------------- internals --------------------
 
     private void ensureSession(Path file, long lastModified, int pageSize) throws IOException {
@@ -151,11 +127,17 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2
      * so that Next is fast (best-effort).
      */
     private void ensureSessionAtEndOfPage(Path file, long lastModified, int pageIndex, int pageSize) {
-        if (session == null) return;
-        if (!session.isCompatible(file, lastModified, pageSize)) return;
+        if (session == null) {
+            return;
+        }
+        if (!session.isCompatible(file, lastModified, pageSize)) {
+            return;
+        }
 
         // If session is already after this page, keep it.
-        if (session.nextPageIndex >= pageIndex + 1) return;
+        if (session.nextPageIndex >= pageIndex + 1) {
+            return;
+        }
 
         // We won't do expensive reposition here; cached read should stay cheap.
         // Next call will reposition if needed.
@@ -175,7 +157,7 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2
         session.nextPageIndex = targetPageIndex;
     }
 
-    private Page readNextPageFromSession(int pageIndex, int pageSize) throws IOException {
+    private Page readNextPageFromSession(int pageIndex, int pageSize) {
         // invariant: session.nextPageIndex == pageIndex
         List<GenericRecord> out = new ArrayList<>(pageSize);
         int read = 0;
@@ -249,10 +231,6 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2
                     new GenericDatumReader<>()
             );
             return new Session(file.normalize(), lastModified, pageSize, r, r.getSchema());
-        }
-
-        boolean isSameFile(Path file) {
-            return this.file.equals(file.normalize());
         }
 
         boolean isCompatible(Path file, long lastModified, int pageSize) {
