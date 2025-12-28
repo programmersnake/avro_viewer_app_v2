@@ -71,6 +71,10 @@ public final class ViewerState {
         resetToFirstPage();
     }
 
+    public boolean isSearchMode() {
+        return mode == ViewMode.SEARCH;
+    }
+
     // pageSize updated => reset paging
     public void resetToFirstPage() {
         this.pageIndex = 0;

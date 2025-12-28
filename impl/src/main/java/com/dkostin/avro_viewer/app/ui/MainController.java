@@ -436,8 +436,10 @@ public class MainController {
 
     private void updatePagingButtons() {
         boolean noFile = state.getFile() == null;
-        prevBtn.setDisable(noFile || state.getPageIndex() == 0);
-        nextBtn.setDisable(noFile || !state.isHasNext());
+        boolean search = state.isSearchMode();
+
+        prevBtn.setDisable(noFile || search || state.getPageIndex() == 0);
+        nextBtn.setDisable(noFile || search || !state.isHasNext());
     }
 
     private void onPageSizeChanged() {
