@@ -195,3 +195,37 @@
 .menu-item:armed {
     -fx-background-color: rgba(37,99,235,0.22);
 }
+
+.btn-icon {
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-padding: 0;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.btn:hover, .menu-button:hover, .btn-primary:hover, .btn-danger:hover, .btn-icon:hover {
+    -fx-background-color: rgba(17,24,39,0.08);
+}
+
+.btn:pressed, .menu-button:pressed, .btn-primary:pressed, .btn-danger:pressed, .btn-icon:pressed {
+    -fx-background-color: rgba(17,24,39,0.12);
+}
+
+.btn-icon:hover {
+    -fx-border-color: rgba(220, 38, 38, 0.35);
+}
+
+.filters-scroll {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.filters-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.filters-list {
+    -fx-padding: 2 0 2 0;
+}
+

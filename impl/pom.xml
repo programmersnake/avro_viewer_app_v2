@@ -58,7 +58,6 @@
             <version>${snappy.version}</version>
         </dependency>
 
-
     </dependencies>
 
     <build>

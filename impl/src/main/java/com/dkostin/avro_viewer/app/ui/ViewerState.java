@@ -10,6 +10,8 @@ import java.nio.file.Path;
 public final class ViewerState {
     private Path file;
 
+    private ViewMode viewMode = ViewMode.BROWSE;
+
     @Setter
     private Schema schema;
 
@@ -27,12 +29,14 @@ public final class ViewerState {
         this.schema = null;
         this.pageIndex = 0;
         this.hasNext = true;
+        this.viewMode = ViewMode.BROWSE;
     }
 
     public void setPageSize(int pageSize) {
         if (pageSize <= 0) {
             throw new IllegalArgumentException("pageSize must be > 0");
         }
+        this.viewMode = ViewMode.BROWSE;
         this.pageSize = pageSize;
         resetToFirstPage();
     }

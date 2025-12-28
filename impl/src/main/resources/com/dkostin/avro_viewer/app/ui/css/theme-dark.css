@@ -204,3 +204,37 @@
     -fx-border-color: rgba(99,164,255,0.6);
     -fx-border-width: 1.5;
 }
+
+.btn-icon {
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-padding: 0;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.btn:hover, .menu-button:hover, .btn-primary:hover, .btn-danger:hover, .btn-icon:hover {
+    -fx-background-color: rgba(255,255,255,0.10);
+}
+
+.btn:pressed, .menu-button:pressed, .btn-primary:pressed, .btn-danger:pressed, .btn-icon:pressed {
+    -fx-background-color: rgba(255,255,255,0.16);
+}
+
+/* remove button hover a bit "danger" */
+.btn-icon:hover {
+    -fx-border-color: rgba(255, 92, 92, 0.40);
+}
+
+.filters-scroll {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.filters-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.filters-list {
+    -fx-padding: 2 0 2 0;
+}

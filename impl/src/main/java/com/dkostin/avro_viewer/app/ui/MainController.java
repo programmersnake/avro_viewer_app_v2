@@ -4,13 +4,19 @@ import com.dkostin.avro_viewer.app.common.Page;
 import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.data.AvroFileService;
 import com.dkostin.avro_viewer.app.data.ExportService;
+import com.dkostin.avro_viewer.app.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.filter.MatchOperation;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -27,26 +33,23 @@ import static com.dkostin.avro_viewer.app.ui.Theme.LIGHT;
 public class MainController {
 
     @FXML
+    private TextField maxResultsField;
+    @FXML
     private ToggleButton themeToggle;
 
     @FXML
     private ComboBox<Integer> pageSizeCombo;
+
     @FXML
-    private Label pageSizeValue;
+    private VBox filtersBox;
     @FXML
-    private ComboBox<String> operatorCombo;
-    @FXML
-    private TextField searchField;
-    @FXML
-    private TextField maxResultsField;
+    private Label resultsLabel;
 
     @FXML
     private Button prevBtn;
     @FXML
     private Button nextBtn;
 
-    @FXML
-    private Label activeFiltersLabel;
     @FXML
     private Label pageLabel;
     @FXML
@@ -86,18 +89,118 @@ public class MainController {
 
         state.setPageSize(pageSizeCombo.getValue());
 
-        operatorCombo.setItems(FXCollections.observableArrayList("(all)", "AND", "OR"));
-        operatorCombo.setValue("(all)");
-
-        maxResultsField.setText("500");
-
         updatePagingButtons();
+        resetFiltersUi();
+
+        maxResultsField.textProperty().addListener((_, _, newV) -> {
+            if (newV != null && !newV.matches("\\d*")) {
+                maxResultsField.setText(newV.replaceAll("[^\\d]", ""));
+            }
+        });
+    }
+
+    private int getMaxResultsOrDefault() {
+        String s = maxResultsField.getText();
+        if (s == null || s.isBlank()) return 500;
+        int v = Integer.parseInt(s);
+        return Math.max(1, v);
+    }
+
+    private void resetFiltersUi() {
+        filtersBox.getChildren().clear();
+        addFilterRow();              // 1 start row
+        resultsLabel.setText("Active: (none)");
+    }
+
+    @FXML
+    public void onAddFilter(ActionEvent e) {
+        addFilterRow();
+    }
+
+    private void addFilterRow() {
+        HBox row = createFilterRow();
+        filtersBox.getChildren().add(row);
+    }
+
+    private HBox createFilterRow() {
+        ComboBox<String> fieldCombo = new ComboBox<>();
+        fieldCombo.setPromptText("Field");
+        fieldCombo.setPrefWidth(220);
+
+        fieldCombo.setItems(FXCollections.observableArrayList(getAvailableFields()));
+
+        ComboBox<MatchOperation> opCombo = new ComboBox<>();
+        opCombo.setPromptText("Condition");
+        opCombo.setPrefWidth(180);
+        opCombo.setItems(FXCollections.observableArrayList(MatchOperation.values()));
+        opCombo.setValue(MatchOperation.CONTAINS);
+
+        TextField valueField = new TextField();
+        valueField.setPromptText("Value (use 'null')");
+        HBox.setHgrow(valueField, Priority.ALWAYS);
+
+        Button removeBtn = new Button("✕");
+        removeBtn.getStyleClass().addAll("btn", "btn-icon"); // додаси CSS
+        removeBtn.setOnAction(this::onRemoveFilter);
+
+        rowSetUserData(removeBtn, fieldCombo, opCombo, valueField);
+
+        // IS_NULL/NOT_NULL => value disabled
+        opCombo.valueProperty().addListener((_, _, newV) -> {
+            boolean needsNoValue = (newV == MatchOperation.IS_NULL || newV == MatchOperation.NOT_NULL);
+            valueField.setDisable(needsNoValue);
+            if (needsNoValue) valueField.clear();
+        });
+
+        HBox row = new HBox(10, fieldCombo, opCombo, valueField, removeBtn);
+        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        return row;
+    }
+
+    private List<FilterCriterion> collectCriteria() {
+        List<FilterCriterion> out = new java.util.ArrayList<>();
+
+        for (var node : filtersBox.getChildren()) {
+            if (!(node instanceof HBox row)) continue;
+            var children = row.getChildren();
+            if (children.size() < 4) continue;
+
+            Button removeBtn = (Button) children.getLast();
+            FilterRowRefs refs = (FilterRowRefs) removeBtn.getUserData();
+
+            String field = refs.fieldCombo().getValue();
+            MatchOperation op = refs.opCombo().getValue();
+            String value = refs.valueField().getText();
+
+            if (field == null || op == null) continue;
+
+            if (op == MatchOperation.IS_NULL || op == MatchOperation.NOT_NULL) {
+                out.add(new FilterCriterion(field, op, null));
+                continue;
+            }
+
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+
+            out.add(new FilterCriterion(field, op, value.trim()));
+        }
+
+        return out;
+    }
+
+    private void rowSetUserData(
+            Button removeBtn,
+            ComboBox<String> fieldCombo,
+            ComboBox<MatchOperation> opCombo,
+            TextField valueField
+    ) {
+        removeBtn.setUserData(new FilterRowRefs(fieldCombo, opCombo, valueField));
     }
 
     private void initPageSize() {
         pageSizeCombo.setItems(FXCollections.observableArrayList(25, 50, 100, 200, 500));
         pageSizeCombo.setValue(50);
-        pageSizeValue.setText(String.valueOf(pageSizeCombo.getValue()));
         pageSizeCombo.setOnAction(_ -> onPageSizeChanged());
     }
 
@@ -206,26 +309,6 @@ public class MainController {
     }
 
     @FXML
-    private void onAddFilter() {
-        activeFiltersLabel.setText("Active: (add filter clicked)");
-    }
-
-    @FXML
-    private void onApplyFilters() {
-        activeFiltersLabel.setText("Active: (apply filters clicked)");
-    }
-
-    @FXML
-    private void onClearFilters() {
-        activeFiltersLabel.setText("Active: (none)");
-    }
-
-    @FXML
-    private void onRunSearch() {
-        statusLabel.setText("Searching: '" + searchField.getText() + "', max=" + maxResultsField.getText());
-    }
-
-    @FXML
     private void onPrevPage() {
         if (state.getFile() == null) {
             return;
@@ -257,6 +340,7 @@ public class MainController {
 
             if (state.getSchema() == null || !state.getSchema().equals(page.schema())) {
                 state.setSchema(page.schema());
+                refreshFieldCombos();
                 rebuildColumns(page.schema());
             }
 
@@ -269,6 +353,22 @@ public class MainController {
             updatePagingButtons();
         } catch (Exception ex) {
             showError("Load page failed", ex);
+        }
+    }
+
+    private void refreshFieldCombos() {
+        var fields = FXCollections.observableArrayList(getAvailableFields());
+
+        for (var node : filtersBox.getChildren()) {
+            if (!(node instanceof HBox row)) continue;
+            var children = row.getChildren();
+            if (children.isEmpty()) continue;
+
+            ComboBox<String> fieldCombo = (ComboBox<String>) children.get(0);
+            var prev = fieldCombo.getValue();
+            fieldCombo.setItems(fields);
+            // якщо попереднє поле ще існує — залишаємо
+            if (prev != null && fields.contains(prev)) fieldCombo.setValue(prev);
         }
     }
 
@@ -311,7 +411,6 @@ public class MainController {
         }
 
         state.setPageSize(newSize);
-        pageSizeValue.setText(String.valueOf(newSize));
 
         reloadCurrentPage();
     }
@@ -324,6 +423,51 @@ public class MainController {
         return items;
     }
 
+    @FXML
+    public void onApplyFilters(ActionEvent e) {
+        if (state.getFile() == null) {
+            statusLabel.setText("Open an .avro file first");
+            return;
+        }
 
+        var criteria = collectCriteria();
+        state.resetToFirstPage();
+
+        // TODO: state.setCriteria(criteria) коли додаси в ViewerState
+        resultsLabel.setText(criteria.isEmpty()
+                ? "No active filters"
+                : ("Active filters: " + criteria.size() + " (AND)"));
+
+        // поки просто reload (пізніше передаси criteria у service)
+        reloadCurrentPage();
+    }
+
+    @FXML
+    public void onClearFilters(ActionEvent e) {
+        resetFiltersUi();
+        state.resetToFirstPage();
+        resultsLabel.setText("No active filters");
+        reloadCurrentPage(); // якщо file==null — твій метод і так повертає
+    }
+
+    private List<String> getAvailableFields() {
+        if (state.getSchema() == null) return List.of();
+        return state.getSchema().getFields().stream()
+                .map(Schema.Field::name)
+                .toList();
+    }
+
+    @FXML
+    public void onRemoveFilter(ActionEvent e) {
+        Button btn = (Button) e.getSource();
+        // parent = HBox row
+        var row = btn.getParent();
+        filtersBox.getChildren().remove(row);
+
+        // не даємо зробити 0 рядків
+        if (filtersBox.getChildren().isEmpty()) {
+            addFilterRow();
+        }
+    }
 }
 
