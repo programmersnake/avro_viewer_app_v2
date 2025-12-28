@@ -1,16 +1,16 @@
 package com.dkostin.avro_viewer.app.ui;
 
+import com.dkostin.avro_viewer.app.filter.FilterCriterion;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.avro.Schema;
 
 import java.nio.file.Path;
+import java.util.List;
 
 @Getter
 public final class ViewerState {
     private Path file;
-
-    private ViewMode viewMode = ViewMode.BROWSE;
 
     @Setter
     private Schema schema;
@@ -22,21 +22,24 @@ public final class ViewerState {
     @Setter
     private boolean hasNext;
 
-    // filter state, selected fields, etc
+    private ViewMode mode = ViewMode.BROWSE;
+    private List<FilterCriterion> criteria = List.of();
+    private int maxResults = 500;
+
 
     public void openFile(Path file) {
         this.file = file;
         this.schema = null;
         this.pageIndex = 0;
         this.hasNext = true;
-        this.viewMode = ViewMode.BROWSE;
+        this.mode = ViewMode.BROWSE;
     }
 
     public void setPageSize(int pageSize) {
         if (pageSize <= 0) {
             throw new IllegalArgumentException("pageSize must be > 0");
         }
-        this.viewMode = ViewMode.BROWSE;
+        this.mode = ViewMode.BROWSE;
         this.pageSize = pageSize;
         resetToFirstPage();
     }
@@ -54,9 +57,24 @@ public final class ViewerState {
         }
     }
 
+    public void setSearch(List<FilterCriterion> criteria, int maxResults) {
+        this.criteria = List.copyOf(criteria);
+        this.maxResults = maxResults;
+        this.mode = ViewMode.SEARCH;
+        resetToFirstPage();
+    }
+
+    public void clearSearch() {
+        this.criteria = List.of();
+        this.maxResults = 500;
+        this.mode = ViewMode.BROWSE;
+        resetToFirstPage();
+    }
+
     // pageSize updated => reset paging
     public void resetToFirstPage() {
         this.pageIndex = 0;
         this.hasNext = true;
     }
+
 }

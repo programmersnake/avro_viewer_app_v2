@@ -4,6 +4,7 @@ import com.dkostin.avro_viewer.app.data.AvroFileService;
 import com.dkostin.avro_viewer.app.data.AvroFileServiceImpl;
 import com.dkostin.avro_viewer.app.data.ExportService;
 import com.dkostin.avro_viewer.app.data.ExportServiceImpl;
+import com.dkostin.avro_viewer.app.filter.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.ui.JsonRowViewerWindow;
 import com.dkostin.avro_viewer.app.ui.ViewerState;
 
@@ -13,10 +14,11 @@ public final class AppContext {
     private ViewerState viewerState;
     private JsonRowViewerWindow jsonRowViewerWindow;
     private ExportService exportService;
+    private FilterPredicateFactory filterPredicateFactory;
 
     public AvroFileService avroFileService() {
         if (avroFileService == null) {
-            avroFileService = new AvroFileServiceImpl();
+            avroFileService = new AvroFileServiceImpl(filterPredicateFactory());
         }
         return avroFileService;
     }
@@ -36,10 +38,17 @@ public final class AppContext {
     }
 
     public ExportService exportService() {
-        if(exportService == null) {
+        if (exportService == null) {
             exportService = new ExportServiceImpl();
         }
         return exportService;
+    }
+
+    public FilterPredicateFactory filterPredicateFactory() {
+        if (filterPredicateFactory == null) {
+            filterPredicateFactory = new FilterPredicateFactory();
+        }
+        return filterPredicateFactory;
     }
 
 }

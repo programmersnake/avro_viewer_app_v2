@@ -1,6 +1,9 @@
 package com.dkostin.avro_viewer.app.data;
 
 import com.dkostin.avro_viewer.app.common.Page;
+import com.dkostin.avro_viewer.app.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.filter.FilterPredicateFactory;
+import lombok.RequiredArgsConstructor;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableFileInput;
@@ -13,7 +16,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+@RequiredArgsConstructor
 public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2}
+
+    private final FilterPredicateFactory predicateFactory;
 
     @Override
     public Schema readSchema(Path file) throws IOException {
@@ -53,5 +59,41 @@ public class AvroFileServiceImpl implements AvroFileService { // todo TODO.md {2
                 new SeekableFileInput(new File(file.toString())),
                 new GenericDatumReader<>()
         );
+    }
+
+    @Override
+    public SearchResult search(Path file, List<FilterCriterion> criteria, int maxResults) throws Exception {
+        if (file == null) throw new IllegalArgumentException("file is null");
+        if (maxResults <= 0) throw new IllegalArgumentException("maxResults must be > 0");
+
+        var predicate = predicateFactory.compile(criteria);
+
+        List<GenericRecord> out = new java.util.ArrayList<>(Math.min(maxResults, 1024));
+        long scanned = 0;
+        boolean truncated = false;
+
+        // DataFileReader сам вміє працювати з codec (snappy) якщо є snappy-java в deps
+        try (var reader = new org.apache.avro.file.DataFileReader<>(
+                file.toFile(),
+                new org.apache.avro.generic.GenericDatumReader<GenericRecord>()
+        )) {
+            Schema schema = reader.getSchema();
+
+            while (reader.hasNext()) {
+                GenericRecord rec = reader.next();
+                scanned++;
+
+                if (predicate.test(rec)) {
+                    out.add(rec);
+
+                    if (out.size() >= maxResults) {
+                        truncated = true;
+                        break;
+                    }
+                }
+            }
+
+            return new SearchResult(schema, out, truncated, scanned);
+        }
     }
 }

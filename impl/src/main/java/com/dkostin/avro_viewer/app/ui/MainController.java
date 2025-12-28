@@ -4,11 +4,14 @@ import com.dkostin.avro_viewer.app.common.Page;
 import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.data.AvroFileService;
 import com.dkostin.avro_viewer.app.data.ExportService;
+import com.dkostin.avro_viewer.app.data.SearchResult;
 import com.dkostin.avro_viewer.app.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.filter.FilterRowModel;
 import com.dkostin.avro_viewer.app.filter.MatchOperation;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
@@ -22,6 +25,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +62,8 @@ public class MainController {
     @FXML
     private TableView<Map<String, Object>> table;
 
+    private final List<FilterRowModel> filterRows = new ArrayList<>();
+    private final List<FilterRowView> filterRowViews = new ArrayList<>();
 
     private Scene scene;
 
@@ -108,7 +114,10 @@ public class MainController {
 
     private void resetFiltersUi() {
         filtersBox.getChildren().clear();
-        addFilterRow();              // 1 start row
+        filterRows.clear();
+        filterRowViews.clear();
+
+        addFilterRow(); // always at least one
         resultsLabel.setText("Active: (none)");
     }
 
@@ -118,15 +127,41 @@ public class MainController {
     }
 
     private void addFilterRow() {
-        HBox row = createFilterRow();
-        filtersBox.getChildren().add(row);
+        FilterRowModel model = new FilterRowModel();
+        filterRows.add(model);
+
+        FilterRowView view = createFilterRow(model);
+        filterRowViews.add(view);
+        filtersBox.getChildren().add(view.root());
     }
 
-    private HBox createFilterRow() {
+    @FXML
+    public void onRemoveFilter(ActionEvent e) {
+        Button btn = (Button) e.getSource();
+        // parent = HBox row
+        var row = btn.getParent();
+        filtersBox.getChildren().remove(row);
+
+        // не даємо зробити 0 рядків
+        if (filtersBox.getChildren().isEmpty()) {
+            addFilterRow();
+        }
+    }
+
+    private void removeFilterRow(FilterRowView view) {
+        filtersBox.getChildren().remove(view.root());
+        filterRowViews.remove(view);
+        filterRows.remove(view.model());
+
+        if (filterRowViews.isEmpty()) {
+            addFilterRow();
+        }
+    }
+
+    private FilterRowView createFilterRow(FilterRowModel model) {
         ComboBox<String> fieldCombo = new ComboBox<>();
         fieldCombo.setPromptText("Field");
         fieldCombo.setPrefWidth(220);
-
         fieldCombo.setItems(FXCollections.observableArrayList(getAvailableFields()));
 
         ComboBox<MatchOperation> opCombo = new ComboBox<>();
@@ -140,10 +175,18 @@ public class MainController {
         HBox.setHgrow(valueField, Priority.ALWAYS);
 
         Button removeBtn = new Button("✕");
-        removeBtn.getStyleClass().addAll("btn", "btn-icon"); // додаси CSS
-        removeBtn.setOnAction(this::onRemoveFilter);
+        removeBtn.getStyleClass().addAll("btn", "btn-icon");
 
-        rowSetUserData(removeBtn, fieldCombo, opCombo, valueField);
+        HBox row = new HBox(10, fieldCombo, opCombo, valueField, removeBtn);
+        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        // --- UI -> model
+        fieldCombo.valueProperty().addListener((_, _, v) -> model.setField(v));
+        opCombo.valueProperty().addListener((_, _, v) -> model.setOp(v));
+        valueField.textProperty().addListener((_, _, v) -> model.setValue(v));
+
+        // --- model defaults -> UI
+        opCombo.setValue(model.getOp());
 
         // IS_NULL/NOT_NULL => value disabled
         opCombo.valueProperty().addListener((_, _, newV) -> {
@@ -152,27 +195,24 @@ public class MainController {
             if (needsNoValue) valueField.clear();
         });
 
-        HBox row = new HBox(10, fieldCombo, opCombo, valueField, removeBtn);
-        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        return row;
+        FilterRowView view = new FilterRowView(row, fieldCombo, opCombo, valueField, removeBtn, model);
+
+        removeBtn.setOnAction(_ -> removeFilterRow(view));
+
+        return view;
     }
 
     private List<FilterCriterion> collectCriteria() {
-        List<FilterCriterion> out = new java.util.ArrayList<>();
+        List<FilterCriterion> out = new ArrayList<>();
 
-        for (var node : filtersBox.getChildren()) {
-            if (!(node instanceof HBox row)) continue;
-            var children = row.getChildren();
-            if (children.size() < 4) continue;
+        for (FilterRowModel r : filterRows) {
+            String field = r.getField();
+            MatchOperation op = r.getOp();
+            String value = r.getValue();
 
-            Button removeBtn = (Button) children.getLast();
-            FilterRowRefs refs = (FilterRowRefs) removeBtn.getUserData();
-
-            String field = refs.fieldCombo().getValue();
-            MatchOperation op = refs.opCombo().getValue();
-            String value = refs.valueField().getText();
-
-            if (field == null || op == null) continue;
+            if (field == null || field.isBlank() || op == null) {
+                continue;
+            }
 
             if (op == MatchOperation.IS_NULL || op == MatchOperation.NOT_NULL) {
                 out.add(new FilterCriterion(field, op, null));
@@ -183,19 +223,13 @@ public class MainController {
                 continue;
             }
 
-            out.add(new FilterCriterion(field, op, value.trim()));
+            String trimmed = value.trim();
+            String normalizedValue = trimmed.equalsIgnoreCase("null") ? null : trimmed;
+
+            out.add(new FilterCriterion(field, op, normalizedValue));
         }
 
         return out;
-    }
-
-    private void rowSetUserData(
-            Button removeBtn,
-            ComboBox<String> fieldCombo,
-            ComboBox<MatchOperation> opCombo,
-            TextField valueField
-    ) {
-        removeBtn.setUserData(new FilterRowRefs(fieldCombo, opCombo, valueField));
     }
 
     private void initPageSize() {
@@ -359,16 +393,18 @@ public class MainController {
     private void refreshFieldCombos() {
         var fields = FXCollections.observableArrayList(getAvailableFields());
 
-        for (var node : filtersBox.getChildren()) {
-            if (!(node instanceof HBox row)) continue;
-            var children = row.getChildren();
-            if (children.isEmpty()) continue;
+        for (FilterRowView view : filterRowViews) {
+            var combo = view.fieldCombo();
+            var prev = combo.getValue();
 
-            ComboBox<String> fieldCombo = (ComboBox<String>) children.get(0);
-            var prev = fieldCombo.getValue();
-            fieldCombo.setItems(fields);
-            // якщо попереднє поле ще існує — залишаємо
-            if (prev != null && fields.contains(prev)) fieldCombo.setValue(prev);
+            combo.setItems(fields);
+
+            if (prev != null && fields.contains(prev)) {
+                combo.setValue(prev);
+            } else {
+                combo.setValue(null);
+                view.model().setField(null);
+            }
         }
     }
 
@@ -431,23 +467,57 @@ public class MainController {
         }
 
         var criteria = collectCriteria();
-        state.resetToFirstPage();
+        int max = getMaxResultsOrDefault();
 
-        // TODO: state.setCriteria(criteria) коли додаси в ViewerState
-        resultsLabel.setText(criteria.isEmpty()
-                ? "No active filters"
-                : ("Active filters: " + criteria.size() + " (AND)"));
+        // UI -> SEARCH mode: off paging
+        state.setSearch(criteria, max);
+        updatePagingButtons();
 
-        // поки просто reload (пізніше передаси criteria у service)
-        reloadCurrentPage();
+        statusLabel.setText("Searching...");
+        resultsLabel.setText("Searching...");
+
+        var task = new Task<SearchResult>() {
+            @Override
+            protected SearchResult call() throws Exception {
+                return avroFileService.search(state.getFile(), criteria, max);
+            }
+        };
+
+        task.setOnSucceeded(_ -> {
+            SearchResult r = task.getValue();
+
+            // schema + columns
+            if (state.getSchema() == null || !state.getSchema().equals(r.schema())) {
+                state.setSchema(r.schema());
+                refreshFieldCombos();
+                rebuildColumns(r.schema());
+            }
+
+            table.setItems(toItems(r.records(), r.schema()));
+
+            String tail = r.truncated() ? " (stopped by maxResults)" : "";
+            resultsLabel.setText("Results: " + r.records().size() + tail);
+            statusLabel.setText("Scanned: " + r.scanned() + ", matched: " + r.records().size() + tail);
+
+            // paging disabled in search
+            updatePagingButtons();
+        });
+
+        task.setOnFailed(_ -> {
+            showError("Search failed", new Exception(task.getException()));
+            statusLabel.setText("Search failed");
+        });
+
+        // run in separate executor
+        new Thread(task, "avro-search").start();
     }
 
     @FXML
     public void onClearFilters(ActionEvent e) {
         resetFiltersUi();
-        state.resetToFirstPage();
-        resultsLabel.setText("No active filters");
-        reloadCurrentPage(); // якщо file==null — твій метод і так повертає
+        state.clearSearch();
+        resultsLabel.setText("Active: (none)");
+        reloadCurrentPage();
     }
 
     private List<String> getAvailableFields() {
@@ -455,19 +525,6 @@ public class MainController {
         return state.getSchema().getFields().stream()
                 .map(Schema.Field::name)
                 .toList();
-    }
-
-    @FXML
-    public void onRemoveFilter(ActionEvent e) {
-        Button btn = (Button) e.getSource();
-        // parent = HBox row
-        var row = btn.getParent();
-        filtersBox.getChildren().remove(row);
-
-        // не даємо зробити 0 рядків
-        if (filtersBox.getChildren().isEmpty()) {
-            addFilterRow();
-        }
     }
 }
 
