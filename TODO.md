@@ -4,6 +4,7 @@ TODO:
 4. ![img.png](doc/img.png) Remove label for the pageSize. Redo pagination to have less pageSize selector.
 5. For filters, we need potentially several selectors: 1) field 2) type (equals/contains) 3) value
 6. For future, for filters, will be good to have type "between", and have instead of 1 condition for value - two. But to be analyzed how better to do.
+7. Add tests
 
 100. debounce??? Should we have it? For now - 100% no.
 
