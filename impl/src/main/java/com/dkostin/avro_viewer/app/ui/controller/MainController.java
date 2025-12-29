@@ -160,7 +160,10 @@ public class MainController {
         Theme t = darkSelected ? Theme.DARK : Theme.LIGHT;
         var css = getClass().getResource(t.getCssPath());
         if (css != null) {
-            scene.getStylesheets().add(css.toExternalForm());
+            scene.getStylesheets().setAll(
+                    getClass().getResource(Theme.BASE.getCssPath()).toExternalForm(),
+                    css.toExternalForm()
+            );
         }
 
         // propagate to JSON window

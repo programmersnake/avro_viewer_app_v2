@@ -1,240 +1,71 @@
+/* =========================================================
+   theme-dark.css
+   Tokens only (looked-up colors)
+   ========================================================= */
+
 .root {
     -fx-font-family: "Inter", "Segoe UI", "Arial";
+
+    /* Main surfaces */
+    -c-bg: #1b1f27;
+    -c-surface: #202633;
+    -c-surface-2: #161a21;
+
+    /* Text */
+    -c-text: #e7eaf0;
+    -c-text-muted: rgba(231,234,240,0.72);
+
+    /* Borders */
+    -c-border: rgba(255,255,255,0.06);
+    -c-border-strong: rgba(255,255,255,0.10);
+
+    /* Accent (blue) */
+    -c-accent: #63a4ff;
+    -c-accent-border: rgba(99,164,255,0.60);
+    -c-focus-ring: rgba(99,164,255,0.45);
+
+    -c-accent-bg: rgba(99,164,255,0.18);
+    -c-accent-bg-strong: rgba(99,164,255,0.28);
+
+    /* Controls */
+    -c-control: rgba(255,255,255,0.06);
+    -c-control-hover: rgba(255,255,255,0.12);
+    -c-control-pressed: rgba(255,255,255,0.16);
+
+    /* Danger */
+    -c-danger: #ff5c5c;
+    -c-danger-bg: rgba(255,92,92,0.18);
+    -c-danger-border: rgba(255,92,92,0.28);
+    -c-danger-text: #ffd6d6;
+    -c-danger-hover-border: rgba(255, 92, 92, 0.40);
+
+    /* Menu */
+    -c-menu-surface: #1f2430;
+    -c-accent-menu-hover: rgba(99,164,255,0.25);
+    -c-accent-menu-armed: rgba(99,164,255,0.35);
+
+    /* Table */
+    -c-table-header: rgba(255,255,255,0.04);
+    -c-row-separator: rgba(255,255,255,0.04);
+    -c-row: rgba(255,255,255,0.01);
+    -c-row-hover: rgba(255,255,255,0.04);
+    -c-accent-row-selected: rgba(99,164,255,0.18);
+
+    /* Switch */
+    -c-switch-bg: rgba(255,255,255,0.15);
+    -c-switch-border: rgba(255,255,255,0.20);
+    -c-switch-hover-bg: rgba(255,255,255,0.22);
+    -c-switch-pressed-bg: rgba(127,127,127,0.30);
+
+    -c-switch-selected-bg: rgba(99,164,255,0.35);
+    -c-switch-selected-border: rgba(99,164,255,0.45);
+    -c-switch-selected-hover-bg: rgba(99,164,255,0.45);
+
+    /* Shadow (subtle) */
+    -c-shadow: rgba(0,0,0,0.55);
+
+    /* Root paint */
     -fx-base: #1f232b;
-    -fx-background: #1b1f27;
-    -fx-text-fill: #e7eaf0;
-}
-
-.topbar {
-    -fx-background-color: #161a21;
-    -fx-border-color: rgba(255,255,255,0.06);
-    -fx-border-width: 0 0 1 0;
-}
-
-.card {
-    -fx-background-color: #202633;
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
-    -fx-border-color: rgba(255,255,255,0.06);
-    -fx-padding: 14;
-}
-
-.h1 {
-    -fx-font-size: 20px;
-    -fx-font-weight: 700;
-}
-
-.muted {
-    -fx-text-fill: rgba(231,234,240,0.72);
-}
-
-.pill {
-    -fx-background-color: rgba(255,255,255,0.08);
-    -fx-padding: 6 10 6 10;
-    -fx-background-radius: 10;
-    -fx-text-fill: rgba(231,234,240,0.9);
-}
-
-.text-field, .combo-box, .menu-button, .button {
-    -fx-background-radius: 10;
-    -fx-border-radius: 10;
-}
-
-/* ---------- MenuButton / MenuItem (dark) ---------- */
-
-.menu-button.btn {
-    -fx-background-color: rgba(255,255,255,0.06);
-    -fx-border-color: rgba(255,255,255,0.10);
-    -fx-text-fill: #e7eaf0;
-}
-
-.menu-button.btn:hover {
-    -fx-background-color: rgba(255,255,255,0.12);
-}
-
-.context-menu {
-    -fx-background-color: #1f2430;
-    -fx-background-radius: 10;
-    -fx-padding: 6;
-    -fx-border-color: rgba(255,255,255,0.08);
-    -fx-border-radius: 10;
-}
-
-.menu-item {
-    -fx-background-color: transparent;
-    -fx-padding: 8 14 8 14;
-    -fx-background-radius: 8;
-}
-
-.menu-item .label {
-    -fx-text-fill: #e7eaf0;
-    -fx-font-size: 13px;
-}
-
-.menu-item:hover,
-.menu-item:focused {
-    -fx-background-color: rgba(99,164,255,0.25);
-}
-
-.menu-item:armed {
-    -fx-background-color: rgba(99,164,255,0.35);
-}
-
-.text-field, .combo-box-base {
-    -fx-background-color: rgba(255,255,255,0.06);
-    -fx-border-color: rgba(255,255,255,0.10);
-    -fx-text-fill: #e7eaf0;
-}
-
-.btn {
-    -fx-background-color: rgba(255,255,255,0.06);
-    -fx-border-color: rgba(255,255,255,0.10);
-    -fx-text-fill: #e7eaf0;
-}
-
-.btn-primary {
-    -fx-background-color: rgba(99, 164, 255, 0.25);
-    -fx-border-color: rgba(99, 164, 255, 0.35);
-    -fx-text-fill: #e7eaf0;
-}
-
-.btn-danger {
-    -fx-background-color: rgba(255, 92, 92, 0.18);
-    -fx-border-color: rgba(255, 92, 92, 0.28);
-    -fx-text-fill: #ffd6d6;
-}
-
-/* Table */
-.table-view {
-    -fx-background-color: transparent;
-    -fx-border-color: rgba(255,255,255,0.06);
-    -fx-border-radius: 12;
-    -fx-background-radius: 12;
-}
-
-.table-view .column-header-background {
-    -fx-background-color: rgba(255,255,255,0.04);
-    -fx-background-radius: 12 12 0 0;
-}
-
-.table-row-cell {
-    -fx-background-color: transparent;
-    -fx-border-color: rgba(255,255,255,0.04);
-}
-
-/* ---- Table text (dark theme) ---- */
-
-.table-view .column-header .label {
-    -fx-text-fill: #e7eaf0;
-}
-
-.table-view .table-cell {
-    -fx-text-fill: #e7eaf0;
-}
-
-.table-row-cell:selected .table-cell,
-.table-row-cell:filled:selected .table-cell,
-.table-row-cell:focused .table-cell,
-.table-row-cell:filled:focused .table-cell {
-    -fx-text-fill: #e7eaf0;
-}
-
-.table-row-cell:selected,
-.table-row-cell:filled:selected {
-    -fx-background-color: rgba(99,164,255,0.18);
-}
-
-.table-row-cell:filled {
-    -fx-background-color: rgba(255,255,255,0.01);
-}
-.table-row-cell:filled:hover {
-    -fx-background-color: rgba(255,255,255,0.04);
-}
-
-/* Switch */
-.switch {
-    -fx-cursor: hand;
-    -fx-background-radius: 999;
-    -fx-min-width: 44;
-    -fx-min-height: 22;
-    -fx-background-color: rgba(255,255,255,0.15);
-    -fx-border-color: rgba(255,255,255,0.20);
-    -fx-border-radius: 999;
-    -fx-padding: 0;
-}
-
-.switch:selected {
-    -fx-background-color: rgba(99,164,255,0.35);
-    -fx-border-color: rgba(99,164,255,0.45);
-}
-
-.switch:hover {
-    -fx-background-color: rgba(255,255,255,0.22);
-}
-
-.switch:selected:hover {
-    -fx-background-color: rgba(99,164,255,0.45);
-}
-
-.switch:focused {
-    -fx-border-color: rgba(99,164,255,0.65);
-}
-
-.switch:pressed {
-    -fx-background-color: rgba(127,127,127,0.30);
-}
-
-/* ---------- Buttons hover (dark) ---------- */
-
-.button {
-    -fx-cursor: hand;
-    -fx-transition: all 120ms ease-in-out;
-}
-
-.button:hover {
-    -fx-background-color: rgba(255,255,255,0.12);
-    -fx-border-color: rgba(255,255,255,0.25);
-}
-
-.button:pressed {
-    -fx-background-color: rgba(255,255,255,0.18);
-}
-
-.button:focused {
-    -fx-border-color: rgba(99,164,255,0.6);
-    -fx-border-width: 1.5;
-}
-
-.btn-icon {
-    -fx-min-width: 34;
-    -fx-min-height: 34;
-    -fx-padding: 0;
-    -fx-background-radius: 10;
-    -fx-border-radius: 10;
-}
-
-.btn:hover, .menu-button:hover, .btn-primary:hover, .btn-danger:hover, .btn-icon:hover {
-    -fx-background-color: rgba(255,255,255,0.10);
-}
-
-.btn:pressed, .menu-button:pressed, .btn-primary:pressed, .btn-danger:pressed, .btn-icon:pressed {
-    -fx-background-color: rgba(255,255,255,0.16);
-}
-
-/* remove button hover a bit "danger" */
-.btn-icon:hover {
-    -fx-border-color: rgba(255, 92, 92, 0.40);
-}
-
-.filters-scroll {
-    -fx-background-color: transparent;
-    -fx-padding: 0;
-}
-
-.filters-scroll > .viewport {
-    -fx-background-color: transparent;
-}
-
-.filters-list {
-    -fx-padding: 2 0 2 0;
+    -fx-background-color: -c-bg;
+    -fx-text-fill: -c-text;
 }

@@ -1,0 +1,316 @@
+/* =========================================================
+   theme-base.css
+   Shared rules for both themes.
+   Uses looked-up colors (tokens) declared in theme-*.css
+   ========================================================= */
+
+/* ---------- Typography helpers ---------- */
+
+.h1 {
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+}
+
+.muted {
+    -fx-text-fill: -c-text-muted;
+}
+
+/* ---------- Layout blocks ---------- */
+
+.topbar {
+    -fx-background-color: -c-surface-2;
+    -fx-border-color: -c-border;
+    -fx-border-width: 0 0 1 0;
+}
+
+.card {
+    -fx-background-color: -c-surface;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: -c-border;
+    -fx-padding: 14;
+}
+
+.surface {
+    -fx-background-color: -c-surface;
+}
+
+.surface-2 {
+    -fx-background-color: -c-surface-2;
+}
+
+.divider {
+    -fx-background-color: -c-border;
+}
+
+/* Subtle elevation */
+.elevated {
+    -fx-effect: dropshadow(gaussian, -c-shadow, 18, 0.10, 0, 6);
+}
+
+/* ---------- Pills / chips ---------- */
+
+.pill {
+    -fx-background-color: -c-control;
+    -fx-padding: 6 10 6 10;
+    -fx-background-radius: 10;
+    -fx-text-fill: -c-text;
+}
+
+/* ---------- Inputs / Controls base ---------- */
+
+.text-field, .combo-box-base, .menu-button, .button {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+/* TextField + ComboBox base styling */
+.text-field, .combo-box-base {
+    -fx-background-color: -c-control;
+    -fx-border-color: -c-border-strong;
+    -fx-text-fill: -c-text;
+
+    -fx-highlight-fill: -c-accent-bg-strong;
+    -fx-highlight-text-fill: -c-text;
+    -fx-prompt-text-fill: -c-text-muted;
+}
+
+.text-field:hover, .combo-box-base:hover {
+    -fx-background-color: -c-control-hover;
+    -fx-border-color: -c-border-strong;
+}
+
+.text-field:focused, .combo-box-base:focused {
+    -fx-border-color: -c-accent-border;
+    -fx-effect: dropshadow(gaussian, -c-focus-ring, 10, 0.25, 0, 0);
+}
+
+/* ---------- Buttons ---------- */
+
+/* Base button feel */
+.button, .btn, .menu-button, .btn-primary, .btn-danger {
+    -fx-cursor: hand;
+}
+
+/* Default button-like style */
+.btn {
+    -fx-background-color: -c-control;
+    -fx-border-color: -c-border-strong;
+    -fx-text-fill: -c-text;
+}
+
+.btn-primary {
+    -fx-background-color: -c-accent-bg;
+    -fx-border-color: -c-accent-bg-strong;
+    -fx-text-fill: -c-text;
+}
+
+.btn-danger {
+    -fx-background-color: -c-danger-bg;
+    -fx-border-color: -c-danger-border;
+    -fx-text-fill: -c-danger-text;
+}
+
+/* Hover/pressed shared */
+.button:hover,
+.btn:hover,
+.menu-button:hover,
+.btn-primary:hover,
+.btn-danger:hover,
+.btn-icon:hover {
+    -fx-background-color: -c-control-hover;
+}
+
+.button:pressed,
+.btn:pressed,
+.menu-button:pressed,
+.btn-primary:pressed,
+.btn-danger:pressed,
+.btn-icon:pressed {
+    -fx-background-color: -c-control-pressed;
+}
+
+/* Focus ring */
+.button:focused,
+.btn:focused,
+.menu-button:focused,
+.btn-primary:focused,
+.btn-danger:focused {
+    -fx-border-color: -c-accent-border;
+    -fx-border-width: 1.5;
+    -fx-effect: dropshadow(gaussian, -c-focus-ring, 10, 0.25, 0, 0);
+}
+
+/* Icon button */
+.btn-icon {
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-padding: 0;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+
+    -fx-background-color: -c-control;
+    -fx-border-color: -c-border-strong;
+    -fx-text-fill: -c-text;
+}
+
+.btn-icon:hover {
+    -fx-border-color: -c-danger-hover-border;
+}
+
+/* ---------- MenuButton / Context menu / Menu items ---------- */
+
+.menu-button.btn {
+    -fx-background-color: -c-control;
+    -fx-border-color: -c-border-strong;
+    -fx-text-fill: -c-text;
+}
+
+.menu-button.btn:hover {
+    -fx-background-color: -c-control-hover;
+}
+
+.context-menu {
+    -fx-background-color: -c-menu-surface;
+    -fx-background-radius: 10;
+    -fx-padding: 6;
+    -fx-border-color: -c-border;
+    -fx-border-radius: 10;
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 8 14 8 14;
+    -fx-background-radius: 8;
+}
+
+.menu-item .label {
+    -fx-text-fill: -c-text;
+    -fx-font-size: 13px;
+}
+
+.menu-item:hover,
+.menu-item:focused {
+    -fx-background-color: -c-accent-menu-hover;
+}
+
+.menu-item:armed {
+    -fx-background-color: -c-accent-menu-armed;
+}
+
+/* ---------- TableView ---------- */
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: -c-border;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+}
+
+/* Header background */
+.table-view .column-header-background {
+    -fx-background-color: -c-table-header;
+    -fx-background-radius: 12 12 0 0;
+}
+
+/* Header text */
+.table-view .column-header .label {
+    -fx-text-fill: -c-text;
+}
+
+/* Cell text */
+.table-view .table-cell {
+    -fx-text-fill: -c-text;
+}
+
+/* Rows */
+.table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: -c-row-separator;
+}
+
+.table-row-cell:filled {
+    -fx-background-color: -c-row;
+}
+
+.table-row-cell:filled:hover {
+    -fx-background-color: -c-row-hover;
+}
+
+/* Selected row background + keep text readable */
+.table-row-cell:selected,
+.table-row-cell:filled:selected {
+    -fx-background-color: -c-accent-row-selected;
+}
+
+.table-row-cell:selected .table-cell,
+.table-row-cell:filled:selected .table-cell,
+.table-row-cell:focused .table-cell,
+.table-row-cell:filled:focused .table-cell {
+    -fx-text-fill: -c-text;
+}
+
+/* ---------- Switch ---------- */
+
+.switch {
+    -fx-cursor: hand;
+    -fx-background-radius: 999;
+    -fx-min-width: 44;
+    -fx-min-height: 22;
+    -fx-background-color: -c-switch-bg;
+    -fx-border-color: -c-switch-border;
+    -fx-border-radius: 999;
+    -fx-padding: 0;
+}
+
+.switch:selected {
+    -fx-background-color: -c-switch-selected-bg;
+    -fx-border-color: -c-switch-selected-border;
+}
+
+.switch:hover {
+    -fx-background-color: -c-switch-hover-bg;
+}
+
+.switch:selected:hover {
+    -fx-background-color: -c-switch-selected-hover-bg;
+}
+
+.switch:focused {
+    -fx-border-color: -c-accent-border;
+    -fx-effect: dropshadow(gaussian, -c-focus-ring, 10, 0.25, 0, 0);
+}
+
+.switch:pressed {
+    -fx-background-color: -c-switch-pressed-bg;
+}
+
+/* ---------- Filters scroll ---------- */
+
+.filters-scroll {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.filters-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.filters-list {
+    -fx-padding: 2 0 2 0;
+}
+
+.ring-focus:focused {
+    -fx-effect: dropshadow(gaussian, -c-focus-ring, 10, 0.25, 0, 0);
+}
+
+/* Micro rounded */
+.rounded-sm {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.rounded-md {
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+}

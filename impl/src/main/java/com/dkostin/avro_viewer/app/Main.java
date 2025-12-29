@@ -24,7 +24,10 @@ public class Main extends Application {
         Scene scene = new Scene(loader.load(), 1280, 720);
 
         // Default theme: dark
-        scene.getStylesheets().add(getClass().getResource(Theme.DARK.getCssPath()).toExternalForm());
+        scene.getStylesheets().setAll(
+                getClass().getResource(Theme.BASE.getCssPath()).toExternalForm(),
+                getClass().getResource(Theme.DARK.getCssPath()).toExternalForm()
+        );
 
         MainController controller = loader.getController();
         controller.initTheme(scene);
