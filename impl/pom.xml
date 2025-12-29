@@ -5,11 +5,11 @@
     <parent>
         <groupId>com.dkostin.avro_viewer.app</groupId>
         <artifactId>avro-viewer-app</artifactId>
-        <version>0.2-SNAPSHOT</version>
+        <version>0.3-SNAPSHOT</version>
     </parent>
 
     <artifactId>avro-viewer-app-impl</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
