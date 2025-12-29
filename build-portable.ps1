@@ -3,7 +3,7 @@ $env:Path = "$JAVA_HOME\bin;$M2_HOME\bin;" + $env:Path
 
 # App Configuration
 $APP_NAME = "AvroViewer"
-$MAIN_JAR = "avro-viewer-app-impl-0.2-SNAPSHOT.jar"
+$MAIN_JAR = "avro-viewer-app-impl-0.3-SNAPSHOT.jar"
 $MAIN_CLASS = "com.dkostin.avro_viewer.app.Main"
 $ICON_PATH = "impl/src/main/resources/icon.ico"
 
