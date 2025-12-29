@@ -8,6 +8,8 @@ import javafx.collections.ObservableList;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.apache.avro.Schema;
 
@@ -55,6 +57,7 @@ public class FiltersUi {
         opCombo.setValue(MatchOperation.CONTAINS);
 
         TextField valueField = new TextField();
+        HBox.setHgrow(valueField, Priority.ALWAYS);
         valueField.setPromptText("Value (use 'null')");
         // Delete row button
         Button removeBtn = new Button("✕");
@@ -75,7 +78,7 @@ public class FiltersUi {
 
         // Create a row representation and add to the container
         FilterRowView view = new FilterRowView(
-                new javafx.scene.layout.HBox(10, fieldCombo, opCombo, valueField, removeBtn),
+                new HBox(10, fieldCombo, opCombo, valueField, removeBtn),
                 fieldCombo, opCombo, valueField, removeBtn, model
         );
         filterViews.add(view);
