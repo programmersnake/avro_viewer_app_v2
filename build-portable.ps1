@@ -3,7 +3,8 @@ $env:Path = "$JAVA_HOME\bin;$M2_HOME\bin;" + $env:Path
 
 # App Configuration
 $APP_NAME = "AvroViewer"
-$MAIN_JAR = "avro-viewer-app-impl-0.3-SNAPSHOT.jar"
+$APP_VERSION = "0.3"
+$MAIN_JAR = "avro-viewer-app-impl-$APP_VERSION-SNAPSHOT.jar"
 $MAIN_CLASS = "com.dkostin.avro_viewer.app.Main"
 $ICON_PATH = "impl/src/main/resources/icon.ico"
 
@@ -20,6 +21,9 @@ Write-Host "Step 3: Creating Portable App Image..." -ForegroundColor Cyan
 & jpackage `
   --type app-image `
   --name "$APP_NAME" `
+  --vendor "Denys Kostin" `
+  --description "Avro file viewer" `
+  --app-version "$APP_VERSION" `
   --input "impl/target/bundle" `
   --main-jar "$MAIN_JAR" `
   --main-class "$MAIN_CLASS" `
