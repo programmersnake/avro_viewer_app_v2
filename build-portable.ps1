@@ -5,6 +5,7 @@ $env:Path = "$JAVA_HOME\bin;$M2_HOME\bin;" + $env:Path
 $APP_NAME = "AvroViewer"
 $MAIN_JAR = "avro-viewer-app-impl-0.2-SNAPSHOT.jar"
 $MAIN_CLASS = "com.dkostin.avro_viewer.app.Main"
+$ICON_PATH = "impl/src/main/resources/icon.ico"
 
 Write-Host "Step 1: Copying dependencies..." -ForegroundColor Cyan
 & mvn dependency:copy-dependencies -DoutputDirectory=target/libs
@@ -26,6 +27,9 @@ Write-Host "Step 3: Creating Portable App Image..." -ForegroundColor Cyan
   --win-console `
   --module-path "impl/target/libs" `
   --add-modules javafx.controls,javafx.fxml,javafx.graphics `
+  --java-options "--enable-native-access=javafx.graphics" `
+  --java-options "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" `
+  --icon "$ICON_PATH" `
   --verbose
 
 Write-Host "Done! Look into dist folder." -ForegroundColor Green
