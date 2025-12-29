@@ -28,7 +28,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AvroFileServiceImpl implements AvroFileService {
 
-    private static final int DEFAULT_PAGE_CACHE_SIZE = 8;
+    private static final int DEFAULT_PAGE_CACHE_SIZE = 4;
 
     private final FilterPredicateFactory predicateFactory;
 
