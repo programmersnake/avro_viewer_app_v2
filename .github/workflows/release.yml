@@ -64,12 +64,8 @@ jobs:
         shell: bash
         run: |
           VER="$APP_VERSION"
-          echo "Detected version: $VER"
-
           MAIN_JAR="avro-viewer-app-impl-$VER.jar"
           APP_NAME="AvroViewer"
-          
-          PKG_VER="$VER"
           
           if [ "$RUNNER_OS" == "Windows" ]; then
             TYPE="app-image"
@@ -90,12 +86,12 @@ jobs:
             OUTPUT_NAME="AvroViewer-Linux"
           fi
 
-          echo "Building $APP_NAME version $PKG_VER for $RUNNER_OS..."
+          echo "Building $APP_NAME..."
 
           jpackage \
             --type $TYPE \
             --name "$APP_NAME" \
-            --app-version "$PKG_VER" \
+            --app-version "$VER" \
             --input "impl/target/bundle" \
             --main-jar "$MAIN_JAR" \
             --main-class "com.dkostin.avro_viewer.app.Main" \
@@ -109,7 +105,29 @@ jobs:
             $EXTRA_ARGS
 
           cd dist
-          mv "$APP_NAME" "$OUTPUT_NAME"
+          if [ "$RUNNER_OS" == "macOS" ]; then
+             mv "${APP_NAME}.app" "${OUTPUT_NAME}.app"
+          else
+             mv "$APP_NAME" "$OUTPUT_NAME"
+          fi
+
+      # 6. Archive Release (Оновлено для підтримки правильних назв)
+      - name: Archive Release
+        shell: bash
+        run: |
+          cd dist
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            NAME="AvroViewer-Windows-${{ env.APP_VERSION }}.zip"
+            7z a "$NAME" "AvroViewer-Windows"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+             NAME="AvroViewer-macOS-${{ env.APP_VERSION }}.zip"
+             # Тут ми архівуємо вже перейменований .app
+             zip -r "$NAME" "AvroViewer-macOS.app" 
+          else
+             NAME="AvroViewer-Linux-${{ env.APP_VERSION }}.zip"
+             zip -r "$NAME" "AvroViewer-Linux"
+          fi
+          echo "ARTIFACT_PATH=dist/$NAME" >> $GITHUB_ENV
 
       # 6. Archive
       - name: Archive Release
