@@ -384,3 +384,17 @@
     -fx-opacity: 0;
     -fx-padding: 0;
 }
+
+/* ---------- TreeView Arrow Styling ---------- */
+
+.tree-cell .tree-disclosure-node .arrow {
+    -fx-background-color: -c-icon-arrow;
+}
+
+.tree-cell:hover .tree-disclosure-node .arrow {
+    -fx-background-color: -c-text;
+}
+
+.tree-cell:selected .tree-disclosure-node .arrow {
+    -fx-background-color: -c-text;
+}
