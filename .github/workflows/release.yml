@@ -29,32 +29,35 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      # 1. Taking version from pom.xml and removing "-SNAPSHOT"
+      # 1. Prepare Version
       - name: Prepare Release Version
         shell: bash
         run: |
           CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           CLEAN_VERSION=${CURRENT_VERSION//-SNAPSHOT/}
-          
           echo "APP_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
-          
           mvn versions:set -DnewVersion=$CLEAN_VERSION -DgenerateBackupPoms=false
 
-      # 2. JAR build
+      # 2. Build & Install
       - name: Build with Maven
-        run: mvn -B clean package -DskipTests --file pom.xml
+        run: mvn -B clean install -DskipTests --file pom.xml
 
-      # 3. Copy all dependencies
+      # 3. Copy dependencies
       - name: Copy dependencies
-        run: mvn dependency:copy-dependencies -DoutputDirectory=impl/target/libs --file impl/pom.xml
+        run: mvn dependency:copy-dependencies --file impl/pom.xml
 
-      # 4. Folder bundle should be prepared
+      # 4. Debug & Bundle
       - name: Prepare bundle directory
         shell: bash
         run: |
+          echo "Listing target directory for debugging:"
+          ls -R impl/target
+          
           mkdir -p impl/target/bundle
+          
           cp impl/target/avro-viewer-app-impl-*.jar impl/target/bundle/
-          cp impl/target/libs/*.jar impl/target/bundle/
+          
+          cp impl/target/dependency/*.jar impl/target/bundle/
 
       # 5. jpackage stage
       - name: Run jpackage
@@ -63,7 +66,6 @@ jobs:
           MAIN_JAR="avro-viewer-app-impl-${{ env.APP_VERSION }}.jar"
           APP_NAME="AvroViewer"
           
-          # Settings per OS
           if [ "$RUNNER_OS" == "Windows" ]; then
             TYPE="app-image"
             ICON="impl/src/main/resources/icon.ico"
@@ -89,7 +91,7 @@ jobs:
             --main-jar "$MAIN_JAR" \
             --main-class "com.dkostin.avro_viewer.app.Main" \
             --dest "dist" \
-            --module-path "impl/target/libs" \
+            --module-path "impl/target/dependency" \
             --add-modules javafx.controls,javafx.fxml,javafx.graphics \
             --java-options "--enable-native-access=javafx.graphics" \
             --java-options "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" \
@@ -100,6 +102,7 @@ jobs:
           cd dist
           mv "$APP_NAME" "$OUTPUT_NAME"
 
+      # 6. Archive
       - name: Archive Release
         shell: bash
         run: |
@@ -116,7 +119,7 @@ jobs:
           fi
           echo "ARTIFACT_PATH=dist/$NAME" >> $GITHUB_ENV
 
-      # 7. Upload ZIP to release
+      # 7. Upload
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
