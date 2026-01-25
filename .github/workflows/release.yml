@@ -1,0 +1,123 @@
+name: Release Runnable Apps
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-and-package:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # 1. Taking version from pom.xml to use it in name of file
+      - name: Get Project Version
+        shell: bash
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Detected version: $VERSION"
+
+      # 2. JAR build
+      - name: Build with Maven
+        run: mvn -B clean package -DskipTests --file pom.xml
+
+      # 3. Copy all dependencies
+      - name: Copy dependencies
+        run: mvn dependency:copy-dependencies -DoutputDirectory=impl/target/libs --file impl/pom.xml
+
+      # 4. Folder bundle should be prepared
+      - name: Prepare bundle directory
+        shell: bash
+        run: |
+          mkdir -p impl/target/bundle
+          cp impl/target/avro-viewer-app-impl-*.jar impl/target/bundle/
+          cp impl/target/libs/*.jar impl/target/bundle/
+          echo "Bundle content:"
+          ls -l impl/target/bundle/
+
+      # 5. jpackage stage
+      - name: Run jpackage
+        shell: bash
+        run: |
+          MAIN_JAR="avro-viewer-app-impl-${{ env.APP_VERSION }}.jar"
+          APP_NAME="AvroViewer"
+          
+          # Settings per OS
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            TYPE="app-image"
+            ICON="impl/src/main/resources/icon.ico"
+            EXTRA_ARGS="--win-console"
+            OUTPUT_NAME="AvroViewer-Windows"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            TYPE="app-image"
+            ICON="impl/src/main/resources/icon.icns"
+            EXTRA_ARGS=""
+            OUTPUT_NAME="AvroViewer-macOS"
+          else
+            # Linux
+            TYPE="app-image"
+            ICON="impl/src/main/resources/icon.png"
+            EXTRA_ARGS=""
+            OUTPUT_NAME="AvroViewer-Linux"
+          fi
+
+          echo "Building for $RUNNER_OS with icon $ICON..."
+
+          jpackage \
+            --type $TYPE \
+            --name "$APP_NAME" \
+            --app-version "${{ env.APP_VERSION }}" \
+            --input "impl/target/bundle" \
+            --main-jar "$MAIN_JAR" \
+            --main-class "com.dkostin.avro_viewer.app.Main" \
+            --dest "dist" \
+            --module-path "impl/target/libs" \
+            --add-modules javafx.controls,javafx.fxml,javafx.graphics \
+            --java-options "--enable-native-access=javafx.graphics" \
+            --java-options "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED" \
+            --icon "$ICON" \
+            --verbose \
+            $EXTRA_ARGS
+
+          cd dist
+          mv "$APP_NAME" "$OUTPUT_NAME"
+
+      # 6. Archive the result to ZIP
+      - name: Archive Release
+        shell: bash
+        run: |
+          cd dist
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            NAME="AvroViewer-Windows-${{ env.APP_VERSION }}.zip"
+            7z a "$NAME" "AvroViewer-Windows"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+             NAME="AvroViewer-macOS-${{ env.APP_VERSION }}.zip"
+             zip -r "$NAME" "AvroViewer-macOS.app" 
+          else
+             NAME="AvroViewer-Linux-${{ env.APP_VERSION }}.zip"
+             zip -r "$NAME" "AvroViewer-Linux"
+          fi
+          echo "ARTIFACT_PATH=dist/$NAME" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$NAME" >> $GITHUB_ENV
+
+      # 7. Upload ZIP to release
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ env.ARTIFACT_PATH }}
