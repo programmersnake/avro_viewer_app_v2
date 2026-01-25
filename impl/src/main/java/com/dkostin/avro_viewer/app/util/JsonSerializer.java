@@ -1,4 +1,4 @@
-package com.dkostin.avro_viewer.app.data;
+package com.dkostin.avro_viewer.app.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

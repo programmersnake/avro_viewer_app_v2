@@ -1,8 +1,10 @@
-package com.dkostin.avro_viewer.app.data;
+package com.dkostin.avro_viewer.app.service.impl;
 
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
-import com.dkostin.avro_viewer.app.domain.Page;
-import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.Page;
+import com.dkostin.avro_viewer.app.domain.model.SearchResult;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.service.api.AvroFileService;
 import lombok.RequiredArgsConstructor;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;

@@ -1,4 +1,4 @@
-package com.dkostin.avro_viewer.app.domain.filter;
+package com.dkostin.avro_viewer.app.domain.model.filter;
 
 import lombok.Getter;
 import lombok.Setter;

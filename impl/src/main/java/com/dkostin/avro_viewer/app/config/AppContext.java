@@ -1,12 +1,13 @@
 package com.dkostin.avro_viewer.app.config;
 
-import com.dkostin.avro_viewer.app.data.AvroFileService;
-import com.dkostin.avro_viewer.app.data.AvroFileServiceImpl;
-import com.dkostin.avro_viewer.app.data.ExportService;
-import com.dkostin.avro_viewer.app.data.ExportServiceImpl;
-import com.dkostin.avro_viewer.app.logic.ViewerService;
+import com.dkostin.avro_viewer.app.domain.state.ViewerState;
+import com.dkostin.avro_viewer.app.service.api.AvroFileService;
+import com.dkostin.avro_viewer.app.service.api.ExportService;
+import com.dkostin.avro_viewer.app.service.api.ViewerService;
+import com.dkostin.avro_viewer.app.service.impl.AvroFileServiceImpl;
+import com.dkostin.avro_viewer.app.service.impl.ExportServiceImpl;
+import com.dkostin.avro_viewer.app.service.impl.ViewerServiceImpl;
 import com.dkostin.avro_viewer.app.ui.component.JsonRowViewerWindow;
-import com.dkostin.avro_viewer.app.domain.ViewerState;
 
 public final class AppContext {
 
@@ -54,7 +55,7 @@ public final class AppContext {
 
     public ViewerService viewerService() {
         if (viewerService == null) {
-            viewerService = new ViewerService(avroFileService(), exportService(), viewerState());
+            viewerService = new ViewerServiceImpl(avroFileService(), exportService(), viewerState());
         }
         return viewerService;
     }

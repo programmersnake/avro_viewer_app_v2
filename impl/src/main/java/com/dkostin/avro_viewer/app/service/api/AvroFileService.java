@@ -1,7 +1,8 @@
-package com.dkostin.avro_viewer.app.data;
+package com.dkostin.avro_viewer.app.service.api;
 
-import com.dkostin.avro_viewer.app.domain.Page;
-import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.Page;
+import com.dkostin.avro_viewer.app.domain.model.SearchResult;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 
 import java.io.IOException;
 import java.nio.file.Path;

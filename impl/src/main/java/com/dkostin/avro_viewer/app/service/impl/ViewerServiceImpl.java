@@ -1,10 +1,12 @@
-package com.dkostin.avro_viewer.app.logic;
+package com.dkostin.avro_viewer.app.service.impl;
 
-import com.dkostin.avro_viewer.app.data.AvroFileService;
-import com.dkostin.avro_viewer.app.data.ExportService;
-import com.dkostin.avro_viewer.app.domain.Page;
-import com.dkostin.avro_viewer.app.domain.ViewerState;
-import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.Page;
+import com.dkostin.avro_viewer.app.domain.model.SearchResult;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.state.ViewerState;
+import com.dkostin.avro_viewer.app.service.api.AvroFileService;
+import com.dkostin.avro_viewer.app.service.api.ExportService;
+import com.dkostin.avro_viewer.app.service.api.ViewerService;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.ObservableList;
@@ -17,14 +19,14 @@ import java.util.Map;
 /**
  * Service (Use-Case) for manipulation of state of viewing and handling AvroFileService
  */
-public class ViewerService {
+public class ViewerServiceImpl implements ViewerService {
     private final AvroFileService fileService;
     private final ExportService exportService;
     private final ViewerState state;
     // Property for maxResults, handled and joined to UI text label
     private final IntegerProperty maxResultsProperty;
 
-    public ViewerService(AvroFileService fileService, ExportService exportService, ViewerState state) {
+    public ViewerServiceImpl(AvroFileService fileService, ExportService exportService, ViewerState state) {
         this.fileService = fileService;
         this.exportService = exportService;
         this.state = state;
@@ -34,6 +36,7 @@ public class ViewerService {
     /**
      * Property for two-way binding to the maxResults text field
      */
+    @Override
     public IntegerProperty maxResultsProperty() {
         return maxResultsProperty;
     }
@@ -41,6 +44,7 @@ public class ViewerService {
     /**
      * Checking if a file is open
      */
+    @Override
     public boolean isFileOpen() {
         return state.getFile() != null;
     }
@@ -48,6 +52,7 @@ public class ViewerService {
     /**
      * Is search (filtering) mode activated?
      */
+    @Override
     public boolean isSearchMode() {
         return state.isSearchMode();
     }
@@ -55,6 +60,7 @@ public class ViewerService {
     /**
      * Is there a next page when browsing by page?
      */
+    @Override
     public boolean hasNextPage() {
         return state.isHasNext();
     }
@@ -62,14 +68,17 @@ public class ViewerService {
     /**
      * Current page index (0-based)
      */
+    @Override
     public int getPageIndex() {
         return state.getPageIndex();
     }
 
+    @Override
     public int getPageSize() {
         return state.getPageSize();
     }
 
+    @Override
     public void setPageSize(int pageSize) {
         state.setPageSize(pageSize);
     }
@@ -80,6 +89,7 @@ public class ViewerService {
      * @return Page – a page object (first records of the file, page size state.pageSize).
      * @throws Exception if an error occurred while reading the file
      */
+    @Override
     public Page openFile(Path filePath) throws Exception {
         Path prevFile = state.getFile();
         try {
@@ -103,6 +113,7 @@ public class ViewerService {
      * @return Page – the page object after the jump.
      * @throws Exception if the page read failed
      */
+    @Override
     public Page nextPage() throws Exception {
         if (!state.isHasNext()) {
             // If there is no next page, we stay where we are
@@ -117,6 +128,7 @@ public class ViewerService {
     /**
      * Goes to the previous page (pagination)
      */
+    @Override
     public Page prevPage() throws Exception {
         if (state.getPageIndex() == 0) {
             return null;
@@ -133,6 +145,7 @@ public class ViewerService {
      * @return Page – new first page after resizing.
      * @throws Exception if read failed
      */
+    @Override
     public Page changePageSize(int newPageSize) throws Exception {
         state.setPageSize(newPageSize); // sets mode = BROWSE and pageIndex=0
         // After changing the page size – load the new first page
@@ -150,7 +163,8 @@ public class ViewerService {
      * @return SearchResult – search result (found records, schema, counters, etc.)
      * @throws Exception if an error occurred during the search
      */
-    public /*@Nullable*/ com.dkostin.avro_viewer.app.data.SearchResult search(List<FilterCriterion> criteria, int maxResults) throws Exception {
+    @Override
+    public SearchResult search(List<FilterCriterion> criteria, int maxResults) throws Exception {
         state.setSearch(criteria, maxResults);            // switch state to SEARCH mode (pageIndex=0)
         maxResultsProperty.set(maxResults);               // synchronize the property with the new value
         // Search the file using AvroFileService
@@ -163,6 +177,7 @@ public class ViewerService {
      * @return Page – the first page in browse mode after resetting filters.
      * @throws Exception if page reading failed
      */
+    @Override
     public Page clearSearch() throws Exception {
         state.clearSearch();  // resets criteria, maxResults=500, mode=BROWSE, pageIndex=0
         maxResultsProperty.set(state.getMaxResults());  // reset the bound maxResults value to 500
@@ -176,10 +191,12 @@ public class ViewerService {
         return null;
     }
 
+    @Override
     public void exportToJson(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
         exportService.exportTableToJson(out, rows);
     }
 
+    @Override
     public void exportToCsv(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
         exportService.exportTableToCsv(out, rows, state.getSchema());
     }

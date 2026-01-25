@@ -1,15 +1,11 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
-import com.dkostin.avro_viewer.app.data.JsonSerializer;
+import com.dkostin.avro_viewer.app.util.JsonSerializer;
 import javafx.animation.PauseTransition;
 import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
+import javafx.scene.input.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -246,7 +242,7 @@ public class JsonRowViewerWindow {
     // --- Inner Classes & Records ---
 
     public record JsonTreeNode(String key, Object value, NodeType type) {
-        public enum NodeType { OBJECT, ARRAY, STRING, NUMBER, BOOLEAN, NULL }
+        public enum NodeType {OBJECT, ARRAY, STRING, NUMBER, BOOLEAN, NULL}
 
         @Override
         public String toString() {

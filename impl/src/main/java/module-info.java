@@ -11,6 +11,7 @@ module com.dkostin.avro_viewer.app {
 
     exports com.dkostin.avro_viewer.app;
     opens com.dkostin.avro_viewer.app.ui.component to javafx.fxml;
-    opens com.dkostin.avro_viewer.app.ui.controller to javafx.fxml;
-    opens com.dkostin.avro_viewer.app.domain to javafx.fxml;
+    opens com.dkostin.avro_viewer.app.ui.main to javafx.fxml;
+    opens com.dkostin.avro_viewer.app.domain.state to javafx.fxml;
+    opens com.dkostin.avro_viewer.app.domain.model to javafx.fxml;
 }

@@ -1,6 +1,6 @@
-package com.dkostin.avro_viewer.app.domain;
+package com.dkostin.avro_viewer.app.domain.state;
 
-import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.avro.Schema;
@@ -25,7 +25,6 @@ public final class ViewerState {
     private ViewMode mode = ViewMode.BROWSE;
     private List<FilterCriterion> criteria = List.of();
     private int maxResults = 500;
-
 
     public void openFile(Path file) {
         this.file = file;
