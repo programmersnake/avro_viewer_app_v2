@@ -24,7 +24,7 @@ with a bundled Java Runtime — no separate Java or JavaFX installation required
 
 ## 📥 Downloads & Installation
 
-Go to the **[Releases](../../releases)** page to download the latest version for your operating system:
+Go to the **Releases** page to download the latest version for your operating system:
 
 - **Windows:** Download `.zip`, extract, and run `AvroViewer.exe`.
 - **Linux:** Download `.zip`, extract, and run the launcher in `bin/`.
