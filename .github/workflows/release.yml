@@ -63,15 +63,19 @@ jobs:
       - name: Run jpackage
         shell: bash
         run: |
-          MAIN_JAR="avro-viewer-app-impl-${{ env.APP_VERSION }}.jar"
+          VER="$APP_VERSION"
+          echo "Detected version: $VER"
+
+          MAIN_JAR="avro-viewer-app-impl-$VER.jar"
           APP_NAME="AvroViewer"
+          
+          PKG_VER="$VER"
           
           if [ "$RUNNER_OS" == "Windows" ]; then
             TYPE="app-image"
             ICON="impl/src/main/resources/icon.ico"
             EXTRA_ARGS="--win-console"
             OUTPUT_NAME="AvroViewer-Windows"
-            PACKAGE_VERSION="${{ env.APP_VERSION }}"
           
           elif [ "$RUNNER_OS" == "macOS" ]; then
             TYPE="app-image"
@@ -80,20 +84,18 @@ jobs:
             OUTPUT_NAME="AvroViewer-macOS"
           
           else
-            # Linux
             TYPE="app-image"
             ICON="impl/src/main/resources/icon.png"
             EXTRA_ARGS=""
             OUTPUT_NAME="AvroViewer-Linux"
-            PACKAGE_VERSION="${{ env.APP_VERSION }}"
           fi
 
-          echo "Building $APP_NAME version $PACKAGE_VERSION for $RUNNER_OS..."
+          echo "Building $APP_NAME version $PKG_VER for $RUNNER_OS..."
 
           jpackage \
             --type $TYPE \
             --name "$APP_NAME" \
-            --app-version "$PACKAGE_VERSION" \
+            --app-version "$PKG_VER" \
             --input "impl/target/bundle" \
             --main-jar "$MAIN_JAR" \
             --main-class "com.dkostin.avro_viewer.app.Main" \
