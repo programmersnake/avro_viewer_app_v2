@@ -111,7 +111,7 @@ jobs:
              mv "$APP_NAME" "$OUTPUT_NAME"
           fi
 
-      # 6. Archive Release (Оновлено для підтримки правильних назв)
+      # 6. Archive Release
       - name: Archive Release
         shell: bash
         run: |
