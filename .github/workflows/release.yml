@@ -71,22 +71,29 @@ jobs:
             ICON="impl/src/main/resources/icon.ico"
             EXTRA_ARGS="--win-console"
             OUTPUT_NAME="AvroViewer-Windows"
+            PACKAGE_VERSION="${{ env.APP_VERSION }}"
+          
           elif [ "$RUNNER_OS" == "macOS" ]; then
             TYPE="app-image"
             ICON="impl/src/main/resources/icon.icns"
-            EXTRA_ARGS=""
+            EXTRA_ARGS="--mac-package-identifier com.dkostin.avroviewer"
             OUTPUT_NAME="AvroViewer-macOS"
+          
           else
+            # Linux
             TYPE="app-image"
             ICON="impl/src/main/resources/icon.png"
             EXTRA_ARGS=""
             OUTPUT_NAME="AvroViewer-Linux"
+            PACKAGE_VERSION="${{ env.APP_VERSION }}"
           fi
+
+          echo "Building $APP_NAME version $PACKAGE_VERSION for $RUNNER_OS..."
 
           jpackage \
             --type $TYPE \
             --name "$APP_NAME" \
-            --app-version "${{ env.APP_VERSION }}" \
+            --app-version "$PACKAGE_VERSION" \
             --input "impl/target/bundle" \
             --main-jar "$MAIN_JAR" \
             --main-class "com.dkostin.avro_viewer.app.Main" \
