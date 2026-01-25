@@ -1,8 +1,13 @@
 name: Release Runnable Apps
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-and-package:
