@@ -68,4 +68,11 @@
     -fx-base: #1f232b;
     -fx-background-color: -c-bg;
     -fx-text-fill: -c-text;
+
+    -c-json-key: #d2a8ff;
+    -c-json-string: #7ee787;
+    -c-json-number: #79c0ff;
+    -c-json-boolean: #ff7b72;
+    -c-json-object: #ffa657;
+    -c-json-array: #a5d6ff;
 }

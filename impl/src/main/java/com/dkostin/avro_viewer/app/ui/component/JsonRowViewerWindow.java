@@ -1,7 +1,6 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
 import com.dkostin.avro_viewer.app.data.JsonSerializer;
-import com.dkostin.avro_viewer.app.domain.JsonTreeNode;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
@@ -28,16 +27,14 @@ public class JsonRowViewerWindow {
 
     public void openJsonWindow(Map<String, Object> row, Scene ownerScene) {
         try {
-            // Cache JSON for Copy Button
             this.rawJsonCache = JsonSerializer.toJsonSafe(row);
 
             if (jsonStage == null) {
                 initStage(ownerScene);
             }
 
-            // Build Tree
             TreeItem<JsonTreeNode> root = buildTree("root", row);
-            root.setExpanded(true); // Expand first level
+            root.setExpanded(true);
             jsonTreeView.setRoot(root);
 
             jsonStage.show();
@@ -50,9 +47,9 @@ public class JsonRowViewerWindow {
 
     private void initStage(Scene ownerScene) {
         jsonTreeView = new TreeView<>();
-        jsonTreeView.setShowRoot(false); // Hide technical root level
+        jsonTreeView.setShowRoot(false);
+        jsonTreeView.getStyleClass().add("table-view");
 
-        // --- VIEW: Magic of view ---
         jsonTreeView.setCellFactory(_ -> new TreeCell<>() {
             @Override
             protected void updateItem(JsonTreeNode item, boolean empty) {
@@ -64,50 +61,44 @@ public class JsonRowViewerWindow {
                     return;
                 }
 
-                // 1. KEY (name of field)
-                Text keyText = new Text(item.key());
                 boolean isContainer = (item.type() == JsonTreeNode.NodeType.OBJECT || item.type() == JsonTreeNode.NodeType.ARRAY);
 
-                // If it is folder (Object/Array) - BOLD
+                // 1. Key
+                Text keyText = new Text(item.key());
                 if (isContainer) {
-                    keyText.setStyle("-fx-font-weight: bold; -fx-fill: #2c3e50; -fx-font-size: 13px;");
+                    keyText.getStyleClass().add("json-key-container");
                 } else {
-                    keyText.setStyle("-fx-font-weight: normal; -fx-fill: #8e44ad;");
+                    keyText.getStyleClass().add("json-key");
                 }
 
-                // 2. Value and Icons
+                // 2. Value
                 TextFlow flow;
-
                 switch (item.type()) {
                     case OBJECT -> {
-                        // For Map/Record add icons {}
                         Text icon = new Text(" { } ");
-                        icon.setStyle("-fx-fill: #e67e22; -fx-font-weight: bold;");
+                        icon.getStyleClass().add("json-icon-object");
 
-                        // Metadata: how a lot of fields inside
                         int size = getTreeItem().getChildren().size();
                         Text meta = new Text("(" + size + " fields)");
-                        meta.setStyle("-fx-fill: #95a5a6; -fx-font-size: 10px;");
+                        meta.getStyleClass().add("json-meta");
 
                         flow = new TextFlow(keyText, icon, meta);
                     }
                     case ARRAY -> {
-                        // For List add icons []
                         Text icon = new Text(" [ ] ");
-                        icon.setStyle("-fx-fill: #2980b9; -fx-font-weight: bold;");
+                        icon.getStyleClass().add("json-icon-array");
 
                         int size = getTreeItem().getChildren().size();
                         Text meta = new Text(size + " items");
-                        meta.setStyle("-fx-fill: #95a5a6; -fx-font-size: 10px;");
+                        meta.getStyleClass().add("json-meta");
 
                         flow = new TextFlow(keyText, icon, meta);
                     }
                     default -> {
-                        // For primitives
                         Text separator = new Text(" : ");
-                        separator.setStyle("-fx-fill: gray;");
+                        separator.getStyleClass().add("json-separator");
 
-                        Text valueText = formatPrimitiveValue(item);
+                        Text valueText = createValueText(item);
                         flow = new TextFlow(keyText, separator, valueText);
                     }
                 }
@@ -121,7 +112,7 @@ public class JsonRowViewerWindow {
         jsonStage = new Stage();
         jsonStage.setTitle("Record Inspector");
         jsonStage.initOwner(ownerScene.getWindow());
-        jsonStage.initModality(javafx.stage.Modality.NONE); // Enable clicking on main window
+        jsonStage.initModality(javafx.stage.Modality.NONE);
 
         Scene s = new Scene(root, 700, 800);
         if (ownerScene.getStylesheets() != null) {
@@ -130,24 +121,24 @@ public class JsonRowViewerWindow {
         jsonStage.setScene(s);
     }
 
-    private Text formatPrimitiveValue(JsonTreeNode item) {
+    private Text createValueText(JsonTreeNode item) {
         Text t = new Text();
         switch (item.type()) {
             case STRING -> {
                 t.setText("\"" + item.value() + "\"");
-                t.setStyle("-fx-fill: #27ae60;");
+                t.getStyleClass().add("json-string");
             }
             case NUMBER -> {
                 t.setText(String.valueOf(item.value()));
-                t.setStyle("-fx-fill: #2980b9;");
+                t.getStyleClass().add("json-number");
             }
             case BOOLEAN -> {
                 t.setText(String.valueOf(item.value()));
-                t.setStyle("-fx-fill: #d35400; -fx-font-weight: bold;");
+                t.getStyleClass().add("json-boolean");
             }
             case NULL -> {
                 t.setText("null");
-                t.setStyle("-fx-fill: #bdc3c7; -fx-font-style: italic;");
+                t.getStyleClass().add("json-null");
             }
         }
         return t;
@@ -155,9 +146,19 @@ public class JsonRowViewerWindow {
 
     @SuppressWarnings("unchecked")
     private TreeItem<JsonTreeNode> buildTree(String key, Object data) {
-        TreeItem<JsonTreeNode> item = getIdentifiedType(key, data);
+        JsonTreeNode.NodeType type;
 
-        // 2. Recursion (Taking children)
+        if (data == null) type = JsonTreeNode.NodeType.NULL;
+        else if (data instanceof Map) type = JsonTreeNode.NodeType.OBJECT;
+        else if (data instanceof GenericRecord) type = JsonTreeNode.NodeType.OBJECT;
+        else if (data instanceof List) type = JsonTreeNode.NodeType.ARRAY;
+        else if (data instanceof Number) type = JsonTreeNode.NodeType.NUMBER;
+        else if (data instanceof Boolean) type = JsonTreeNode.NodeType.BOOLEAN;
+        else type = JsonTreeNode.NodeType.STRING;
+
+        JsonTreeNode node = new JsonTreeNode(key, data, type);
+        TreeItem<JsonTreeNode> item = new TreeItem<>(node);
+
         if (data instanceof Map<?, ?> map) {
             map.forEach((k, v) -> item.getChildren().add(buildTree(String.valueOf(k), v)));
         }
@@ -172,26 +173,13 @@ public class JsonRowViewerWindow {
                 item.getChildren().add(buildTree("[" + i + "]", list.get(i)));
             }
         }
-
         return item;
-    }
-
-    private static TreeItem<JsonTreeNode> getIdentifiedType(String key, Object data) {
-        JsonTreeNode.NodeType type = switch (data) {
-            case null -> JsonTreeNode.NodeType.NULL;
-            case Map _, GenericRecord _ -> JsonTreeNode.NodeType.OBJECT;
-            case List _ -> JsonTreeNode.NodeType.ARRAY;
-            case Number _ -> JsonTreeNode.NodeType.NUMBER;
-            case Boolean _ -> JsonTreeNode.NodeType.BOOLEAN;
-            default -> JsonTreeNode.NodeType.STRING;
-        };
-
-        JsonTreeNode node = new JsonTreeNode(key, data, type);
-        return new TreeItem<>(node);
     }
 
     private BorderPane getBorderPane() {
         Button copyBtn = new Button("Copy JSON");
+        copyBtn.getStyleClass().add("btn");
+
         copyBtn.setOnAction(_ -> {
             var content = new ClipboardContent();
             content.putString(this.rawJsonCache);
@@ -199,12 +187,17 @@ public class JsonRowViewerWindow {
         });
 
         Button expandAllBtn = new Button("Expand All");
+        expandAllBtn.getStyleClass().add("btn");
+
         expandAllBtn.setOnAction(_ -> expandAll(jsonTreeView.getRoot()));
 
         ToolBar toolBar = new ToolBar(copyBtn, expandAllBtn);
+        toolBar.getStyleClass().add("topbar");
 
         var root = new BorderPane(jsonTreeView);
         root.setTop(toolBar);
+        root.getStyleClass().add("surface");
+
         return root;
     }
 
