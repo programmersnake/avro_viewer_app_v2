@@ -314,3 +314,87 @@
     -fx-background-radius: 12;
     -fx-border-radius: 12;
 }
+
+/* ---------- JSON Viewer Styles ---------- */
+
+/* Key names */
+.json-key {
+    -fx-fill: -c-json-key;
+    -fx-font-weight: bold;
+}
+.json-key-container {
+    -fx-fill: -c-text;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* Icons { } [ ] */
+.json-icon-object {
+    -fx-fill: -c-json-object;
+    -fx-font-weight: bold;
+}
+.json-icon-array {
+    -fx-fill: -c-json-array;
+    -fx-font-weight: bold;
+}
+
+/* Values */
+.json-string  { -fx-fill: -c-json-string; }
+.json-number  { -fx-fill: -c-json-number; }
+.json-boolean { -fx-fill: -c-json-boolean; -fx-font-weight: bold; }
+.json-null    { -fx-fill: -c-text-muted; -fx-font-style: italic; }
+
+/* Meta info (size, items) */
+.json-meta {
+    -fx-fill: -c-text-muted;
+    -fx-font-size: 10px;
+}
+
+/* Separator : */
+.json-separator {
+    -fx-fill: -c-text-muted;
+}
+
+/* ---------- TreeView & TreeCells Fix ---------- */
+
+.tree-view {
+    -fx-background-color: transparent;
+}
+.tree-view .virtual-flow .clipped-container .sheet .tree-cell {
+    -fx-background-color: transparent;
+}
+
+.tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -c-text;
+    -fx-padding: 2 0 2 0;
+}
+
+.tree-cell:filled:hover {
+    -fx-background-color: -c-row-hover;
+}
+
+.tree-cell:filled:selected,
+.tree-cell:selected {
+    -fx-background-color: -c-accent-row-selected;
+    -fx-text-fill: -c-text;
+}
+
+.tree-view > .virtual-flow > .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-padding: 0;
+}
+
+/* ---------- TreeView Arrow Styling ---------- */
+
+.tree-cell .tree-disclosure-node .arrow {
+    -fx-background-color: -c-icon-arrow;
+}
+
+.tree-cell:hover .tree-disclosure-node .arrow {
+    -fx-background-color: -c-text;
+}
+
+.tree-cell:selected .tree-disclosure-node .arrow {
+    -fx-background-color: -c-text;
+}
