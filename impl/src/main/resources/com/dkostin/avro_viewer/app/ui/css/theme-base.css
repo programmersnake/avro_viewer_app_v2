@@ -357,7 +357,6 @@
 
 /* ---------- TreeView & TreeCells Fix ---------- */
 
-/* Робимо саме дерево прозорим */
 .tree-view {
     -fx-background-color: transparent;
 }
@@ -365,26 +364,22 @@
     -fx-background-color: transparent;
 }
 
-/* Робимо комірки прозорими, щоб було видно фон surface */
 .tree-cell {
     -fx-background-color: transparent;
     -fx-text-fill: -c-text;
-    -fx-padding: 2 0 2 0; /* Трохи відступів для краси */
+    -fx-padding: 2 0 2 0;
 }
 
-/* При наведенні */
 .tree-cell:filled:hover {
     -fx-background-color: -c-row-hover;
 }
 
-/* Виділений елемент */
 .tree-cell:filled:selected,
 .tree-cell:selected {
     -fx-background-color: -c-accent-row-selected;
-    -fx-text-fill: -c-text; /* Гарантуємо, що текст читається */
+    -fx-text-fill: -c-text;
 }
 
-/* Ховаємо горизонтальний скролбар, якщо він не треба (опціонально) */
 .tree-view > .virtual-flow > .scroll-bar:horizontal {
     -fx-opacity: 0;
     -fx-padding: 0;

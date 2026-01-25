@@ -186,12 +186,22 @@ public class JsonRowViewerWindow {
             Clipboard.getSystemClipboard().setContent(content);
         });
 
+        // --- EXPAND BUTTON ---
         Button expandAllBtn = new Button("Expand All");
         expandAllBtn.getStyleClass().add("btn");
-
         expandAllBtn.setOnAction(_ -> expandAll(jsonTreeView.getRoot()));
 
-        ToolBar toolBar = new ToolBar(copyBtn, expandAllBtn);
+        // --- COLLAPSE BUTTON ---
+        Button collapseBtn = new Button("Collapse All");
+        collapseBtn.getStyleClass().add("btn");
+        collapseBtn.setOnAction(_ -> {
+            if (jsonTreeView.getRoot() != null) {
+                collapseAll(jsonTreeView.getRoot());
+                jsonTreeView.getRoot().setExpanded(true);
+            }
+        });
+
+        ToolBar toolBar = new ToolBar(copyBtn, new Separator(), expandAllBtn, collapseBtn);
         toolBar.getStyleClass().add("topbar");
 
         var root = new BorderPane(jsonTreeView);
@@ -206,6 +216,15 @@ public class JsonRowViewerWindow {
             item.setExpanded(true);
             for(TreeItem<?> child : item.getChildren()){
                 expandAll(child);
+            }
+        }
+    }
+
+    private void collapseAll(TreeItem<?> item) {
+        if (item != null && !item.isLeaf()) {
+            item.setExpanded(false);
+            for (TreeItem<?> child : item.getChildren()) {
+                collapseAll(child);
             }
         }
     }
