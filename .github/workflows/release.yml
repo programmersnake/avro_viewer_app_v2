@@ -111,6 +111,7 @@ jobs:
           fi
           echo "ARTIFACT_PATH=dist/$NAME" >> $GITHUB_ENV
 
+      # 7. Upload ZIP to release
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
