@@ -1,4 +1,4 @@
-package com.dkostin.avro_viewer.app.domain;
+package com.dkostin.avro_viewer.app.ui;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

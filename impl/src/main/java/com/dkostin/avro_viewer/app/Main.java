@@ -2,8 +2,8 @@ package com.dkostin.avro_viewer.app;
 
 import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.config.AppControllerFactory;
-import com.dkostin.avro_viewer.app.ui.controller.MainController;
-import com.dkostin.avro_viewer.app.domain.Theme;
+import com.dkostin.avro_viewer.app.ui.Theme;
+import com.dkostin.avro_viewer.app.ui.main.MainController;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;

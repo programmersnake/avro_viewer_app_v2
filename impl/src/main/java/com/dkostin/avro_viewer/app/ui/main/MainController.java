@@ -1,11 +1,11 @@
-package com.dkostin.avro_viewer.app.ui.controller;
+package com.dkostin.avro_viewer.app.ui.main;
 
 import com.dkostin.avro_viewer.app.config.AppContext;
-import com.dkostin.avro_viewer.app.data.SearchResult;
-import com.dkostin.avro_viewer.app.domain.Page;
-import com.dkostin.avro_viewer.app.domain.Theme;
-import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
-import com.dkostin.avro_viewer.app.logic.ViewerService;
+import com.dkostin.avro_viewer.app.domain.model.Page;
+import com.dkostin.avro_viewer.app.domain.model.SearchResult;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.service.api.ViewerService;
+import com.dkostin.avro_viewer.app.ui.Theme;
 import com.dkostin.avro_viewer.app.ui.component.ErrorAlert;
 import com.dkostin.avro_viewer.app.ui.component.FiltersUi;
 import com.dkostin.avro_viewer.app.ui.component.JsonRowViewerWindow;

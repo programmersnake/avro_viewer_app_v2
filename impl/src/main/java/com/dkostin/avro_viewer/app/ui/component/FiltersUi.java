@@ -1,8 +1,8 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
-import com.dkostin.avro_viewer.app.domain.filter.FilterCriterion;
-import com.dkostin.avro_viewer.app.domain.filter.FilterRowModel;
-import com.dkostin.avro_viewer.app.domain.filter.MatchOperation;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterRowModel;
+import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Button;
@@ -27,6 +27,16 @@ public class FiltersUi {
 
     public FiltersUi(VBox filtersContainer) {
         this.filtersContainer = filtersContainer;
+    }
+
+    public record FilterRowView(
+            HBox root,
+            ComboBox<String> fieldCombo,
+            ComboBox<MatchOperation> opCombo,
+            TextField valueField,
+            Button removeBtn,
+            FilterRowModel model
+    ) {
     }
 
     /**

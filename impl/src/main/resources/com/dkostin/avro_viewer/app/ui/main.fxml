@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.dkostin.avro_viewer.app.ui.controller.MainController"
+            fx:controller="com.dkostin.avro_viewer.app.ui.main.MainController"
             styleClass="root">
 
     <!-- Top bar -->
