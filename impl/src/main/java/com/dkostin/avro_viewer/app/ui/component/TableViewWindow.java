@@ -17,12 +17,12 @@ import java.util.Map;
 /**
  * Responsible for configuring table columns and displaying records
  */
-public class TableViewPresenter {
+public class TableViewWindow {
     private final TableView<Map<String, Object>> tableView;
-    private final JsonRowViewerWindow jsonViewer;
+    private final RowViewWindow jsonViewer;
     private Schema currentSchema;  // last displayed scheme (to avoid unnecessary column rearrangement)
 
-    public TableViewPresenter(TableView<Map<String, Object>> tableView, JsonRowViewerWindow jsonViewer) {
+    public TableViewWindow(TableView<Map<String, Object>> tableView, RowViewWindow jsonViewer) {
         this.tableView = tableView;
         this.jsonViewer = jsonViewer;
         configureRowEvents();  // bind event handlers (double click, Enter)
