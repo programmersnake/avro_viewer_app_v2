@@ -7,13 +7,13 @@ import com.dkostin.avro_viewer.app.service.api.ViewerService;
 import com.dkostin.avro_viewer.app.service.impl.AvroFileServiceImpl;
 import com.dkostin.avro_viewer.app.service.impl.ExportServiceImpl;
 import com.dkostin.avro_viewer.app.service.impl.ViewerServiceImpl;
-import com.dkostin.avro_viewer.app.ui.component.JsonRowViewerWindow;
+import com.dkostin.avro_viewer.app.ui.component.RowViewWindow;
 
 public final class AppContext {
 
     private AvroFileService avroFileService;
     private ViewerState viewerState;
-    private JsonRowViewerWindow jsonRowViewerWindow;
+    private RowViewWindow rowViewWindow;
     private ExportService exportService;
     private FilterPredicateFactory filterPredicateFactory;
     private ViewerService viewerService;
@@ -32,11 +32,11 @@ public final class AppContext {
         return viewerState;
     }
 
-    public JsonRowViewerWindow jsonWindow() {
-        if (jsonRowViewerWindow == null) {
-            jsonRowViewerWindow = new JsonRowViewerWindow();
+    public RowViewWindow jsonWindow() {
+        if (rowViewWindow == null) {
+            rowViewWindow = new RowViewWindow();
         }
-        return jsonRowViewerWindow;
+        return rowViewWindow;
     }
 
     public ExportService exportService() {

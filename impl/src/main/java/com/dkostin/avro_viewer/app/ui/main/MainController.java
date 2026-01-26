@@ -8,8 +8,8 @@ import com.dkostin.avro_viewer.app.service.api.ViewerService;
 import com.dkostin.avro_viewer.app.ui.Theme;
 import com.dkostin.avro_viewer.app.ui.component.ErrorAlert;
 import com.dkostin.avro_viewer.app.ui.component.FiltersUi;
-import com.dkostin.avro_viewer.app.ui.component.JsonRowViewerWindow;
-import com.dkostin.avro_viewer.app.ui.component.TableViewPresenter;
+import com.dkostin.avro_viewer.app.ui.component.RowViewWindow;
+import com.dkostin.avro_viewer.app.ui.component.TableViewWindow;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -61,10 +61,10 @@ public class MainController {
 
     // ---- Dependencies / Components ----
     private final ViewerService viewerService;
-    private final JsonRowViewerWindow jsonRowViewerWindow;
+    private final RowViewWindow rowViewWindow;
 
     private FiltersUi filtersUi;
-    private TableViewPresenter tablePresenter;
+    private TableViewWindow tableViewWindow;
 
     // ---- Runtime state ----
     private Scene scene;
@@ -72,7 +72,7 @@ public class MainController {
 
     public MainController(AppContext ctx) {
         this.viewerService = ctx.viewerService();
-        this.jsonRowViewerWindow = ctx.jsonWindow();
+        this.rowViewWindow = ctx.jsonWindow();
     }
 
     /**
@@ -92,7 +92,7 @@ public class MainController {
     private void initialize() {
         // Components
         this.filtersUi = new FiltersUi(filtersBox);
-        this.tablePresenter = new TableViewPresenter(table, jsonRowViewerWindow);
+        this.tableViewWindow = new TableViewWindow(table, rowViewWindow);
 
         // Initial UI
         initPageSizeCombo();
@@ -167,7 +167,7 @@ public class MainController {
         }
 
         // propagate to JSON window
-        jsonRowViewerWindow.syncStyles(scene.getStylesheets());
+        rowViewWindow.syncStyles(scene.getStylesheets());
     }
 
     // ---------------------------
@@ -191,7 +191,7 @@ public class MainController {
             // schema -> filters & table
             Schema schema = page.schema();
             filtersUi.updateFieldOptions(schema);
-            tablePresenter.updateTableData(page.records(), schema);
+            tableViewWindow.updateTableData(page.records(), schema);
 
             // labels
             resultsLabel.setText("Active: (none)");
@@ -248,7 +248,7 @@ public class MainController {
             if (activeSearchTask != task) return;
 
             SearchResult result = task.getValue();
-            tablePresenter.updateTableData(result.records(), result.schema());
+            tableViewWindow.updateTableData(result.records(), result.schema());
 
             String tail = result.truncated() ? " (stopped by maxResults)" : "";
             resultsLabel.setText("Results: " + result.records().size() + tail);
@@ -290,7 +290,7 @@ public class MainController {
         try {
             Page page = viewerService.clearSearch();
             if (page != null) {
-                tablePresenter.updateTableData(page.records(), page.schema());
+                tableViewWindow.updateTableData(page.records(), page.schema());
                 pageLabel.setText("Page 1");
                 statusLabel.setText("Loaded " + page.records().size() + " records from " + safeSchemaName(page.schema()));
             } else {
@@ -318,7 +318,7 @@ public class MainController {
         try {
             Page page = viewerService.prevPage();
             if (page != null) {
-                tablePresenter.updateTableData(page.records(), page.schema());
+                tableViewWindow.updateTableData(page.records(), page.schema());
                 pageLabel.setText("Page " + (viewerService.getPageIndex() + 1));
                 statusLabel.setText("Loaded " + page.records().size() + " records (page " + (viewerService.getPageIndex() + 1) + ")");
             }
@@ -340,7 +340,7 @@ public class MainController {
         try {
             Page page = viewerService.nextPage();
             if (page != null) {
-                tablePresenter.updateTableData(page.records(), page.schema());
+                tableViewWindow.updateTableData(page.records(), page.schema());
                 pageLabel.setText("Page " + (viewerService.getPageIndex() + 1));
                 statusLabel.setText("Loaded " + page.records().size() + " records (page " + (viewerService.getPageIndex() + 1) + ")");
             }
@@ -370,7 +370,7 @@ public class MainController {
         try {
             Page page = viewerService.changePageSize(newSize);
             if (page != null) {
-                tablePresenter.updateTableData(page.records(), page.schema());
+                tableViewWindow.updateTableData(page.records(), page.schema());
                 pageLabel.setText("Page 1");
                 statusLabel.setText("Loaded " + page.records().size() + " records from " + safeSchemaName(page.schema()));
             }

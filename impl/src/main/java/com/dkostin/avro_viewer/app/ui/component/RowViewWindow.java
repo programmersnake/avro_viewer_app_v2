@@ -21,7 +21,7 @@ import java.util.Map;
 import static com.dkostin.avro_viewer.app.ui.component.ErrorAlert.showError;
 
 @RequiredArgsConstructor
-public class JsonRowViewerWindow {
+public class RowViewWindow {
 
     // --- CSS Constants ---
     private static final String CSS_JSON_KEY = "json-key";
