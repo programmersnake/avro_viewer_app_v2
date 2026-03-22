@@ -69,7 +69,7 @@ public final class AvroNormalizer {
             // Fallback for raw bytes
             return Map.of("__bytes_b64__", Base64.getEncoder().encodeToString(bytes));
         }
-        
+
         // Strings
         if (value instanceof CharSequence cs) {
             return cs.toString();

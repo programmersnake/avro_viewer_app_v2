@@ -45,6 +45,20 @@ public class RowViewWindow {
 
     // --- Public API ---
 
+    private static TreeItem<JsonTreeNode> getJsonTreeNodeTreeItem(String key, Object data) {
+        JsonTreeNode.NodeType type = switch (data) {
+            case null -> JsonTreeNode.NodeType.NULL;
+            case Map _, GenericRecord _ -> JsonTreeNode.NodeType.OBJECT;
+            case List _ -> JsonTreeNode.NodeType.ARRAY;
+            case Number _ -> JsonTreeNode.NodeType.NUMBER;
+            case Boolean _ -> JsonTreeNode.NodeType.BOOLEAN;
+            default -> JsonTreeNode.NodeType.STRING;
+        };
+
+        JsonTreeNode node = new JsonTreeNode(key, data, type);
+        return new TreeItem<>(node);
+    }
+
     public void openJsonWindow(Map<String, Object> row, Scene ownerScene) {
         try {
             this.rawJsonCache = JsonSerializer.toJsonSafe(row);
@@ -65,13 +79,13 @@ public class RowViewWindow {
         }
     }
 
+    // --- Initialization Logic ---
+
     public void syncStyles(ObservableList<String> styles) {
         if (jsonStage != null && jsonStage.getScene() != null) {
             jsonStage.getScene().getStylesheets().setAll(styles);
         }
     }
-
-    // --- Initialization Logic ---
 
     private void initStage(Scene ownerScene) {
         // 1. Create Components
@@ -139,6 +153,8 @@ public class RowViewWindow {
         jsonStage.setScene(scene);
     }
 
+    // --- Actions & Event Handlers ---
+
     private void setupAccelerators(Scene scene) {
         // CTRL+C -> Copy
         scene.getAccelerators().put(
@@ -158,8 +174,6 @@ public class RowViewWindow {
                 this::handleCollapseAction
         );
     }
-
-    // --- Actions & Event Handlers ---
 
     private void handleCopyAction() {
         if (this.rawJsonCache == null) return;
@@ -198,6 +212,8 @@ public class RowViewWindow {
         }
     }
 
+    // --- Data Logic (Tree Building) ---
+
     private void collapseAll(TreeItem<?> item) {
         if (item != null && !item.isLeaf()) {
             item.setExpanded(false);
@@ -207,22 +223,9 @@ public class RowViewWindow {
         }
     }
 
-    // --- Data Logic (Tree Building) ---
-
     @SuppressWarnings("unchecked")
     private TreeItem<JsonTreeNode> buildTree(String key, Object data) {
-        JsonTreeNode.NodeType type;
-
-        if (data == null) type = JsonTreeNode.NodeType.NULL;
-        else if (data instanceof Map) type = JsonTreeNode.NodeType.OBJECT;
-        else if (data instanceof GenericRecord) type = JsonTreeNode.NodeType.OBJECT;
-        else if (data instanceof List) type = JsonTreeNode.NodeType.ARRAY;
-        else if (data instanceof Number) type = JsonTreeNode.NodeType.NUMBER;
-        else if (data instanceof Boolean) type = JsonTreeNode.NodeType.BOOLEAN;
-        else type = JsonTreeNode.NodeType.STRING;
-
-        JsonTreeNode node = new JsonTreeNode(key, data, type);
-        TreeItem<JsonTreeNode> item = new TreeItem<>(node);
+        TreeItem<JsonTreeNode> item = getJsonTreeNodeTreeItem(key, data);
 
         if (data instanceof Map<?, ?> map) {
             map.forEach((k, v) -> item.getChildren().add(buildTree(String.valueOf(k), v)));
@@ -242,12 +245,12 @@ public class RowViewWindow {
     // --- Inner Classes & Records ---
 
     public record JsonTreeNode(String key, Object value, NodeType type) {
-        public enum NodeType {OBJECT, ARRAY, STRING, NUMBER, BOOLEAN, NULL}
-
         @Override
         public String toString() {
             return key + (value != null ? ": " + value : "");
         }
+
+        public enum NodeType {OBJECT, ARRAY, STRING, NUMBER, BOOLEAN, NULL}
     }
 
     /**
@@ -315,11 +318,7 @@ public class RowViewWindow {
                     t.getStyleClass().add(CSS_JSON_STRING);
                 }
                 case NUMBER -> {
-                    if (item.value() instanceof java.math.BigDecimal bd) {
-                        t.setText(bd.stripTrailingZeros().toPlainString());
-                    } else {
-                        t.setText(String.valueOf(item.value()));
-                    }
+                    t.setText(com.dkostin.avro_viewer.app.util.PresentationFormatter.formatValue(item.value()));
                     t.getStyleClass().add(CSS_JSON_NUMBER);
                 }
                 case BOOLEAN -> {

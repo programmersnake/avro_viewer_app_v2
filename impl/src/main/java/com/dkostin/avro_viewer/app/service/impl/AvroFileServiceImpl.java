@@ -42,6 +42,14 @@ public class AvroFileServiceImpl implements AvroFileService {
     // open reading session for sequential Next
     private Session session;
 
+    private static long safeLastModifiedMillis(Path file) {
+        try {
+            return Files.getLastModifiedTime(file).toMillis();
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
     @Override
     public Page readPage(Path file, int pageIndex, int pageSize) throws IOException {
         Objects.requireNonNull(file, "file");
@@ -78,6 +86,8 @@ public class AvroFileServiceImpl implements AvroFileService {
         }
     }
 
+    // -------------------- internals --------------------
+
     @Override
     public SearchResult search(Path file, List<FilterCriterion> criteria, int maxResults) throws Exception {
         if (file == null) throw new IllegalArgumentException("file is null");
@@ -111,8 +121,6 @@ public class AvroFileServiceImpl implements AvroFileService {
         }
     }
 
-    // -------------------- internals --------------------
-
     private void ensureSession(Path file, long lastModified, int pageSize) throws IOException {
         if (session == null) {
             session = Session.open(file, lastModified, pageSize);
@@ -138,7 +146,6 @@ public class AvroFileServiceImpl implements AvroFileService {
 
         // If session is already after this page, keep it.
         if (session.nextPageIndex >= pageIndex + 1) {
-            return;
         }
 
         // We won't do expensive reposition here; cached read should stay cheap.
@@ -190,14 +197,6 @@ public class AvroFileServiceImpl implements AvroFileService {
                 new SeekableFileInput(new File(file.toString())),
                 new GenericDatumReader<>()
         );
-    }
-
-    private static long safeLastModifiedMillis(Path file) {
-        try {
-            return Files.getLastModifiedTime(file).toMillis();
-        } catch (Exception e) {
-            return 0L;
-        }
     }
 
     private record PageKey(Path file, long lastModified, int pageIndex, int pageSize) {

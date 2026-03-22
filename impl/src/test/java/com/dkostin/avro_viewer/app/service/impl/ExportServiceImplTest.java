@@ -35,11 +35,7 @@ class ExportServiceImplTest {
 
         // Data setup
         Map<String, Object> level1Data = new LinkedHashMap<>();
-        Map<String, Object> level2Data = new LinkedHashMap<>();
-        
-        // As per prompt: `level1 -> level2 -> bytes_b64 : "BG8bOYGdVKZQ"`
-        level2Data.put("bytes_b64", "BG8bOYGdVKZQ");
-        level1Data.put("level2", level2Data);
+        level1Data.put("level2", new java.math.BigDecimal("1234.5678"));
 
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("level1", level1Data);
