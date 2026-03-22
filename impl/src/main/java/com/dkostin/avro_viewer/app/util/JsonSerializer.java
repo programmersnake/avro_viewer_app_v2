@@ -53,22 +53,6 @@ public final class JsonSerializer {
             return Map.of("__bytes_b64__", java.util.Base64.getEncoder().encodeToString(bytes));
         }
 
-        // Avro record
-        if (object instanceof org.apache.avro.generic.GenericRecord rec) {
-            Map<String, Object> m = new java.util.LinkedHashMap<>();
-            for (org.apache.avro.Schema.Field f : rec.getSchema().getFields()) {
-                m.put(f.name(), normalizeObject(rec.get(f.name())));
-            }
-            return m;
-        }
-
-        // Avro array
-        if (object instanceof org.apache.avro.generic.GenericArray<?> ga) {
-            java.util.List<Object> list = new java.util.ArrayList<>();
-            for (Object x : ga) list.add(normalizeObject(x));
-            return list;
-        }
-
         // collections
         if (object instanceof java.util.Collection<?> c) {
             java.util.List<Object> list = new java.util.ArrayList<>(c.size());

@@ -103,7 +103,7 @@ public class TableViewWindow {
     private Map<String, Object> recordToMap(GenericRecord record) {
         Map<String, Object> rowMap = new LinkedHashMap<>();
         for (Schema.Field field : currentSchema.getFields()) {
-            rowMap.put(field.name(), record.get(field.name()));
+            rowMap.put(field.name(), com.dkostin.avro_viewer.app.util.AvroNormalizer.normalize(record.get(field.name()), field.schema()));
         }
         return rowMap;
     }

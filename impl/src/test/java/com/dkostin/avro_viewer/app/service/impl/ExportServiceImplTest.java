@@ -62,9 +62,6 @@ class ExportServiceImplTest {
         String header = lines.get(0);
         String data = lines.get(1);
 
-        System.out.println("HEADER: " + header);
-        System.out.println("DATA: " + data);
-
         // Assert column headers are flattened using dot notation
         assertTrue(header.contains("level1.level2"), "Header must contain level1.level2");
         assertFalse(header.contains("bytes_b64"), "bytes_b64 wrapper should be flattened implicitly");
