@@ -77,12 +77,41 @@ public class TableViewWindow {
         TableColumn<Map<String, Object>, String> col = new TableColumn<>(fieldName);
         // Setting the display of values: null -> "", otherwise toString()
         col.setCellValueFactory(cellData -> {
-            Object value = cellData.getValue().get(fieldName);
-            return new ReadOnlyStringWrapper(value == null ? "" : value.toString());
+            return new ReadOnlyStringWrapper(formatForTableView(cellData.getValue().get(fieldName)));
         });
         // Set column width to content (minimum 120 px)
         col.setPrefWidth(Math.max(120, fieldName.length() * 12.0));
         return col;
+    }
+
+    private static String formatForTableView(Object value) {
+        if (value == null) return "";
+        if (value instanceof java.math.BigDecimal bd) {
+            return bd.stripTrailingZeros().toPlainString();
+        }
+        if (value instanceof java.util.Map<?, ?> map) {
+            StringBuilder sb = new StringBuilder("{");
+            boolean first = true;
+            for (java.util.Map.Entry<?, ?> e : map.entrySet()) {
+                if (!first) sb.append(", ");
+                sb.append(e.getKey()).append("=").append(formatForTableView(e.getValue()));
+                first = false;
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+        if (value instanceof java.util.Collection<?> coll) {
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            for (Object e : coll) {
+                if (!first) sb.append(", ");
+                sb.append(formatForTableView(e));
+                first = false;
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        return value.toString();
     }
 
     /**

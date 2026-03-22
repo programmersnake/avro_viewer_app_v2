@@ -12,6 +12,7 @@ public final class JsonSerializer {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .findAndRegisterModules()
+            .enable(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN)
             .enable(SerializationFeature.INDENT_OUTPUT);
 
     public static String toJsonSafe(Object object) {

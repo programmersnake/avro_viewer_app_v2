@@ -157,7 +157,11 @@ public class ExportServiceImpl implements ExportService {
         }
 
         // Fallback for numbers, booleans etc.
-        flatRow.put(currentPath, String.valueOf(node));
+        if (node instanceof java.math.BigDecimal bd) {
+            flatRow.put(currentPath, bd.stripTrailingZeros().toPlainString());
+        } else {
+            flatRow.put(currentPath, String.valueOf(node));
+        }
     }
 
     private Schema unwrapUnion(Schema schema) {

@@ -315,7 +315,11 @@ public class RowViewWindow {
                     t.getStyleClass().add(CSS_JSON_STRING);
                 }
                 case NUMBER -> {
-                    t.setText(String.valueOf(item.value()));
+                    if (item.value() instanceof java.math.BigDecimal bd) {
+                        t.setText(bd.stripTrailingZeros().toPlainString());
+                    } else {
+                        t.setText(String.valueOf(item.value()));
+                    }
                     t.getStyleClass().add(CSS_JSON_NUMBER);
                 }
                 case BOOLEAN -> {
