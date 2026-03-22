@@ -17,6 +17,7 @@
         <javafx.version>21.0.3</javafx.version>
         <avro.version>1.12.1</avro.version>
         <snappy.version>1.1.10.5</snappy.version>
+        <logback.version>1.5.13</logback.version>
     </properties>
 
     <dependencies>
@@ -56,6 +57,13 @@
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
             <version>${snappy.version}</version>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
         </dependency>
 
         <!-- Test dependencies -->

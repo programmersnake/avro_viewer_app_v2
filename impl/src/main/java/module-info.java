@@ -5,6 +5,7 @@ module com.dkostin.avro_viewer.app {
     requires static lombok;
     requires org.apache.avro;
     requires com.fasterxml.jackson.databind;
+    requires org.slf4j;
 
     opens com.dkostin.avro_viewer.app.ui to javafx.fxml;
     opens com.dkostin.avro_viewer.app.config to javafx.fxml;

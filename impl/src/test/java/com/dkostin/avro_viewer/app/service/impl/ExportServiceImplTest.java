@@ -1,9 +1,6 @@
 package com.dkostin.avro_viewer.app.service.impl;
 
 import javafx.collections.FXCollections;
-import org.apache.avro.LogicalTypes;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -23,18 +20,7 @@ class ExportServiceImplTest {
         ExportServiceImpl service = new ExportServiceImpl();
         Path tempFile = Files.createTempFile("export", ".csv");
 
-        // Decimal schema setup: scale = 2
-        Schema decimalSchema = Schema.create(Schema.Type.BYTES);
-        LogicalTypes.decimal(10, 2).addToSchema(decimalSchema);
 
-        Schema schema = SchemaBuilder.record("TestData")
-                .fields()
-                .name("level1").type().record("Level1").fields()
-                .name("level2").type(decimalSchema).noDefault()
-                .endRecord().noDefault()
-                .name("stringArray").type().array().items().stringType().noDefault()
-                .name("objectArray").type().array().items().map().values().stringType().noDefault()
-                .endRecord();
 
         // Data setup
         Map<String, Object> level1Data = new LinkedHashMap<>();
@@ -52,7 +38,7 @@ class ExportServiceImplTest {
         row.put("primitiveString", "HelloWorld");
 
         // Calling the service
-        service.exportTableToCsv(tempFile, FXCollections.observableArrayList(row), schema);
+        service.exportTableToCsv(tempFile, FXCollections.observableArrayList(row));
 
         // Read back
         List<String> lines = Files.readAllLines(tempFile);

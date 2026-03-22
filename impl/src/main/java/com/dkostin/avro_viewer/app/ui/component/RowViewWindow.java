@@ -12,8 +12,6 @@ import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import lombok.RequiredArgsConstructor;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
 
 import java.util.List;
 import java.util.Map;
@@ -48,8 +46,8 @@ public class RowViewWindow {
     private static TreeItem<JsonTreeNode> getJsonTreeNodeTreeItem(String key, Object data) {
         JsonTreeNode.NodeType type = switch (data) {
             case null -> JsonTreeNode.NodeType.NULL;
-            case Map _, GenericRecord _ -> JsonTreeNode.NodeType.OBJECT;
-            case List _ -> JsonTreeNode.NodeType.ARRAY;
+            case Map<?, ?> _ -> JsonTreeNode.NodeType.OBJECT;
+            case List<?> _ -> JsonTreeNode.NodeType.ARRAY;
             case Number _ -> JsonTreeNode.NodeType.NUMBER;
             case Boolean _ -> JsonTreeNode.NodeType.BOOLEAN;
             default -> JsonTreeNode.NodeType.STRING;
@@ -229,11 +227,6 @@ public class RowViewWindow {
 
         if (data instanceof Map<?, ?> map) {
             map.forEach((k, v) -> item.getChildren().add(buildTree(String.valueOf(k), v)));
-        } else if (data instanceof GenericRecord record) {
-            for (Schema.Field field : record.getSchema().getFields()) {
-                Object value = record.get(field.pos());
-                item.getChildren().add(buildTree(field.name(), value));
-            }
         } else if (data instanceof List<?> list) {
             for (int i = 0; i < list.size(); i++) {
                 item.getChildren().add(buildTree("[" + i + "]", list.get(i)));

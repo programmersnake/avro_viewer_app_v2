@@ -198,6 +198,6 @@ public class ViewerServiceImpl implements ViewerService {
 
     @Override
     public void exportToCsv(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
-        exportService.exportTableToCsv(out, rows, state.getSchema());
+        exportService.exportTableToCsv(out, rows);
     }
 }

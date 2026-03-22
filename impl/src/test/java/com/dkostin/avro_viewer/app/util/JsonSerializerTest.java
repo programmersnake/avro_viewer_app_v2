@@ -38,8 +38,9 @@ class JsonSerializerTest {
 
     @Test
     void testByteEncoding() {
-        byte[] bytes = new byte[]{1, 2, 3};
-        String json = JsonSerializer.toCompactJson(bytes);
-        assertTrue(json.contains("__bytes_b64__"), "Bytes should default to __bytes_b64__ encoding");
+        // Data is now pre-normalized by AvroNormalizer at the boundary
+        Map<String, Object> normalized = Map.of("__bytes_b64__", java.util.Base64.getEncoder().encodeToString(new byte[]{1, 2, 3}));
+        String json = JsonSerializer.toCompactJson(normalized);
+        assertTrue(json.contains("__bytes_b64__"), "Bytes should be serialized with __bytes_b64__ key");
     }
 }

@@ -155,4 +155,17 @@ public class TableViewWindow {
         ObservableList<Map<String, Object>> items = recordsToItems(records);
         tableView.setItems(items);
     }
+
+    /**
+     * Updates the table with pre-normalized search results (already Map data, no GenericRecord conversion needed).
+     *
+     * @param normalizedRecords list of already-normalized row maps
+     * @param schema            Avro schema for column setup
+     */
+    public void updateSearchData(List<Map<String, Object>> normalizedRecords, Schema schema) {
+        if (currentSchema == null || !currentSchema.equals(schema)) {
+            configureColumns(schema);
+        }
+        tableView.setItems(FXCollections.observableArrayList(normalizedRecords));
+    }
 }

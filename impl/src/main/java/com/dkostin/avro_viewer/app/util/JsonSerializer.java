@@ -4,9 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Slf4j
 @UtilityClass
 public final class JsonSerializer {
 
@@ -36,7 +41,7 @@ public final class JsonSerializer {
 
     public static String toCompactJson(Object object) {
         try {
-            return COMPACT_MAPPER.writeValueAsString(normalizeObject(object));
+            return COMPACT_MAPPER.writeValueAsString(toSerializable(object));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize object to JSON", e);
         }
@@ -44,77 +49,47 @@ public final class JsonSerializer {
 
     public static String toJsonSafe(Object object) {
         try {
-            return MAPPER.writeValueAsString(normalizeObject(object));
+            return MAPPER.writeValueAsString(toSerializable(object));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize object to JSON", e);
         }
     }
 
-    private static Object normalizeObject(Object object) {
+    /**
+     * Converts container types (e.g. JavaFX ObservableList, custom Map impls) to standard
+     * Java collections that Jackson can serialize without module-system reflection issues.
+     * Also applies a defensive fallback for any non-standard leaf types that might have
+     * slipped through AvroNormalizer.
+     */
+    private static Object toSerializable(Object object) {
         if (object == null) {
             return null;
         }
 
-        // simple types
+        if (object instanceof Map<?, ?> map) {
+            Map<String, Object> out = new LinkedHashMap<>(map.size());
+            for (var e : map.entrySet()) {
+                out.put(String.valueOf(e.getKey()), toSerializable(e.getValue()));
+            }
+            return out;
+        }
+
+        if (object instanceof Collection<?> coll) {
+            var list = new ArrayList<>(coll.size());
+            for (Object item : coll) {
+                list.add(toSerializable(item));
+            }
+            return list;
+        }
+
+        // Standard Jackson-serializable leaf types — pass through
         if (object instanceof String || object instanceof Number || object instanceof Boolean) {
             return object;
         }
 
-        // Utf8 as CharSequence
-        switch (object) {
-            case CharSequence cs -> {
-                return cs.toString();
-            }
-
-
-            // enums
-            case Enum<?> e -> {
-                return e.name();
-            }
-
-
-            // bytes
-            case byte[] bytes -> {
-                return Map.of("__bytes_b64__", java.util.Base64.getEncoder().encodeToString(bytes));
-            }
-            case java.nio.ByteBuffer bb -> {
-                java.nio.ByteBuffer dup = bb.duplicate();
-                byte[] bytes = new byte[dup.remaining()];
-                dup.get(bytes);
-                return Map.of("__bytes_b64__", java.util.Base64.getEncoder().encodeToString(bytes));
-            }
-
-
-            // collections
-            case java.util.Collection<?> c -> {
-                java.util.List<Object> list = new java.util.ArrayList<>(c.size());
-                for (Object x : c) list.add(normalizeObject(x));
-                return list;
-            }
-
-
-            // maps
-            case Map<?, ?> map -> {
-                Map<String, Object> out = new java.util.LinkedHashMap<>();
-                for (var e : map.entrySet()) {
-                    // ключі в JSON мають бути string
-                    String key = String.valueOf(e.getKey());
-                    out.put(key, normalizeObject(e.getValue()));
-                }
-                return out;
-            }
-
-
-            // Avro fixed / bytes logical
-            case org.apache.avro.generic.GenericData.Fixed fixed -> {
-                byte[] bytes = fixed.bytes();
-                return Map.of("__fixed_b64__", java.util.Base64.getEncoder().encodeToString(bytes));
-            }
-            default -> {
-            }
-        }
-
-        // fallback: stringify
+        // Defensive fallback: stringify any non-standard types that Jackson can't handle natively
+        // (e.g. Avro GenericEnumSymbol, Utf8, or other types AvroNormalizer didn't fully convert)
+        log.debug("toSerializable: converting unknown type {} to String via valueOf()", object.getClass().getName());
         return String.valueOf(object);
     }
 

@@ -3,7 +3,7 @@ package com.dkostin.avro_viewer.app.service.impl;
 import com.dkostin.avro_viewer.app.service.api.ExportService;
 import com.dkostin.avro_viewer.app.util.JsonSerializer;
 import javafx.collections.ObservableList;
-import org.apache.avro.Schema;
+
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -22,7 +22,7 @@ public class ExportServiceImpl implements ExportService {
     }
 
     @Override
-    public void exportTableToCsv(Path out, ObservableList<Map<String, Object>> rows, Schema schemaOrNull) throws IOException {
+    public void exportTableToCsv(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
         List<Map<String, Object>> flatRows = new ArrayList<>(rows.size());
         LinkedHashSet<String> headerKeys = new LinkedHashSet<>();
 
