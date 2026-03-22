@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Slf4j
 @UtilityClass
 public final class JsonSerializer {
 
@@ -56,9 +58,8 @@ public final class JsonSerializer {
     /**
      * Converts container types (e.g. JavaFX ObservableList, custom Map impls) to standard
      * Java collections that Jackson can serialize without module-system reflection issues.
-     * <p>
-     * Unlike the old normalizeObject, this does NOT touch leaf values — that responsibility
-     * belongs to {@link AvroNormalizer} at the data boundary.
+     * Also applies a defensive fallback for any non-standard leaf types that might have
+     * slipped through AvroNormalizer.
      */
     private static Object toSerializable(Object object) {
         if (object == null) {
@@ -81,9 +82,15 @@ public final class JsonSerializer {
             return list;
         }
 
-        // Leaf values (String, Number, Boolean, etc.) — already normalized by AvroNormalizer
-        return object;
+        // Standard Jackson-serializable leaf types — pass through
+        if (object instanceof String || object instanceof Number || object instanceof Boolean) {
+            return object;
+        }
+
+        // Defensive fallback: stringify any non-standard types that Jackson can't handle natively
+        // (e.g. Avro GenericEnumSymbol, Utf8, or other types AvroNormalizer didn't fully convert)
+        log.debug("toSerializable: converting unknown type {} to String via valueOf()", object.getClass().getName());
+        return String.valueOf(object);
     }
 
 }
-

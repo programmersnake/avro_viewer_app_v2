@@ -75,9 +75,14 @@ public final class AvroNormalizer {
             return cs.toString();
         }
 
-        // Enums
+        // Enums (Java enums)
         if (value instanceof Enum<?> e) {
             return e.name();
+        }
+
+        // Avro enums (GenericData.EnumSymbol does NOT extend java.lang.Enum)
+        if (value instanceof org.apache.avro.generic.GenericEnumSymbol<?>) {
+            return value.toString();
         }
 
         // Primitives fallback
