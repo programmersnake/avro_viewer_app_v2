@@ -10,10 +10,23 @@ import java.util.Map;
 @UtilityClass
 public final class JsonSerializer {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .findAndRegisterModules()
-            .enable(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN)
-            .enable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper MAPPER;
+
+    static {
+        MAPPER = new ObjectMapper()
+                .findAndRegisterModules()
+                .enable(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN)
+                .enable(SerializationFeature.INDENT_OUTPUT);
+
+        com.fasterxml.jackson.databind.module.SimpleModule module = new com.fasterxml.jackson.databind.module.SimpleModule();
+        module.addSerializer(java.math.BigDecimal.class, new com.fasterxml.jackson.databind.JsonSerializer<java.math.BigDecimal>() {
+            @Override
+            public void serialize(java.math.BigDecimal value, com.fasterxml.jackson.core.JsonGenerator gen, com.fasterxml.jackson.databind.SerializerProvider serializers) throws java.io.IOException {
+                gen.writeNumber(value.stripTrailingZeros().toPlainString());
+            }
+        });
+        MAPPER.registerModule(module);
+    }
 
     public static String toJsonSafe(Object object) {
         try {
