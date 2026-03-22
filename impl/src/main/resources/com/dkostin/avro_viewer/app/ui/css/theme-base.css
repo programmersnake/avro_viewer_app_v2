@@ -388,7 +388,7 @@
 /* ---------- TreeView Arrow Styling ---------- */
 
 .tree-cell .tree-disclosure-node .arrow {
-    -fx-background-color: -c-icon-arrow;
+    -fx-background-color: derive(-c-text, -50%);
 }
 
 .tree-cell:hover .tree-disclosure-node .arrow {
