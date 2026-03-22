@@ -33,6 +33,9 @@ import java.util.Map;
  */
 public class MainController {
 
+    // ---- Dependencies / Components ----
+    private final ViewerService viewerService;
+    private final RowViewWindow rowViewWindow;
     // ---- FXML ----
     @FXML
     private TextField maxResultsField;
@@ -40,29 +43,20 @@ public class MainController {
     private ToggleButton themeToggle;
     @FXML
     private ComboBox<Integer> pageSizeCombo;
-
     @FXML
     private VBox filtersBox;
     @FXML
     private Label resultsLabel;
-
     @FXML
     private Button prevBtn;
     @FXML
     private Button nextBtn;
-
     @FXML
     private Label pageLabel;
     @FXML
     private Label statusLabel;
-
     @FXML
     private TableView<Map<String, Object>> table;
-
-    // ---- Dependencies / Components ----
-    private final ViewerService viewerService;
-    private final RowViewWindow rowViewWindow;
-
     private FiltersUi filtersUi;
     private TableViewWindow tableViewWindow;
 
@@ -73,6 +67,14 @@ public class MainController {
     public MainController(AppContext ctx) {
         this.viewerService = ctx.viewerService();
         this.rowViewWindow = ctx.jsonWindow();
+    }
+
+    private static String safeSchemaName(Schema schema) {
+        if (schema == null) {
+            return "schema";
+        }
+        String name = schema.getName();
+        return (name == null || name.isBlank()) ? "schema" : name;
     }
 
     /**
@@ -87,6 +89,10 @@ public class MainController {
 
         applyTheme(themeToggle.isSelected());
     }
+
+    // ---------------------------
+    // Bindings / UI init
+    // ---------------------------
 
     @FXML
     private void initialize() {
@@ -106,10 +112,6 @@ public class MainController {
         updatePagingButtons();
     }
 
-    // ---------------------------
-    // Bindings / UI init
-    // ---------------------------
-
     private void initPageSizeCombo() {
         pageSizeCombo.getItems().setAll(25, 50, 100, 200, 500);
 
@@ -119,6 +121,10 @@ public class MainController {
         // keep service in sync
         pageSizeCombo.setOnAction(_ -> onPageSizeChanged());
     }
+
+    // ---------------------------
+    // Theme
+    // ---------------------------
 
     private void bindMaxResultsField() {
         // Set initial value (service/state should provide a sane default, e.g., 500)
@@ -143,15 +149,15 @@ public class MainController {
         );
     }
 
-    // ---------------------------
-    // Theme
-    // ---------------------------
-
     @FXML
     private void onThemeToggle() {
         if (scene == null) return;
         applyTheme(themeToggle.isSelected());
     }
+
+    // ---------------------------
+    // File
+    // ---------------------------
 
     private void applyTheme(boolean darkSelected) {
         if (scene == null) return;
@@ -171,7 +177,7 @@ public class MainController {
     }
 
     // ---------------------------
-    // File
+    // Filters
     // ---------------------------
 
     @FXML
@@ -208,10 +214,6 @@ public class MainController {
             updatePagingButtons();
         }
     }
-
-    // ---------------------------
-    // Filters
-    // ---------------------------
 
     @FXML
     private void onAddFilter(ActionEvent e) {
@@ -273,6 +275,10 @@ public class MainController {
         t.start();
     }
 
+    // ---------------------------
+    // Paging
+    // ---------------------------
+
     @FXML
     private void onClearFilters(ActionEvent e) {
         cancelActiveSearchIfRunning();
@@ -303,10 +309,6 @@ public class MainController {
             updatePagingButtons();
         }
     }
-
-    // ---------------------------
-    // Paging
-    // ---------------------------
 
     @FXML
     private void onPrevPage() {
@@ -352,6 +354,10 @@ public class MainController {
         }
     }
 
+    // ---------------------------
+    // Export
+    // ---------------------------
+
     private void onPageSizeChanged() {
         if (!viewerService.isFileOpen()) {
             // still update service default for next open (optional)
@@ -381,10 +387,6 @@ public class MainController {
             updatePagingButtons();
         }
     }
-
-    // ---------------------------
-    // Export
-    // ---------------------------
 
     @FXML
     private void onExportJson() {
@@ -434,16 +436,16 @@ public class MainController {
         }
     }
 
+    // ---------------------------
+    // Helpers
+    // ---------------------------
+
     private String exportNameSuffix() {
         if (viewerService.isSearchMode()) {
             return "search";
         }
         return "page-" + (viewerService.getPageIndex() + 1);
     }
-
-    // ---------------------------
-    // Helpers
-    // ---------------------------
 
     private void updatePagingButtons() {
         boolean noFile = !viewerService.isFileOpen();
@@ -478,13 +480,5 @@ public class MainController {
             task.cancel(true);
         }
         activeSearchTask = null;
-    }
-
-    private static String safeSchemaName(Schema schema) {
-        if (schema == null) {
-            return "schema";
-        }
-        String name = schema.getName();
-        return (name == null || name.isBlank()) ? "schema" : name;
     }
 }

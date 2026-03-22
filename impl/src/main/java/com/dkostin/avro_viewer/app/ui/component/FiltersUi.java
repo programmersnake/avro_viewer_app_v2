@@ -29,16 +29,6 @@ public class FiltersUi {
         this.filtersContainer = filtersContainer;
     }
 
-    public record FilterRowView(
-            HBox root,
-            ComboBox<String> fieldCombo,
-            ComboBox<MatchOperation> opCombo,
-            TextField valueField,
-            Button removeBtn,
-            FilterRowModel model
-    ) {
-    }
-
     /**
      * Resets all filters: clears the list and adds one empty row
      */
@@ -154,5 +144,15 @@ public class FiltersUi {
             }
         }
         return criteria;
+    }
+
+    public record FilterRowView(
+            HBox root,
+            ComboBox<String> fieldCombo,
+            ComboBox<MatchOperation> opCombo,
+            TextField valueField,
+            Button removeBtn,
+            FilterRowModel model
+    ) {
     }
 }

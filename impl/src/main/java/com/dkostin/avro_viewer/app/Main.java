@@ -13,6 +13,10 @@ import java.io.IOException;
 
 public class Main extends Application {
 
+    static void main(String[] args) {
+        launch(args);
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
         AppContext ctx = new AppContext();
@@ -35,10 +39,6 @@ public class Main extends Application {
         stage.setTitle("Avro Viewer - JavaFX UI");
         stage.setScene(scene);
         stage.show();
-    }
-
-    static void main(String[] args) {
-        launch(args);
     }
 
 }

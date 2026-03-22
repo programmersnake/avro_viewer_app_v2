@@ -28,6 +28,50 @@ public class TableViewWindow {
         configureRowEvents();  // bind event handlers (double click, Enter)
     }
 
+    private static TableColumn<Map<String, Object>, String> getMapStringTableColumn(String fieldName) {
+        TableColumn<Map<String, Object>, String> col = new TableColumn<>(fieldName);
+        // Setting the display of values: null -> "", otherwise toString()
+        col.setCellValueFactory(cellData -> {
+            return new ReadOnlyStringWrapper(formatForTableView(cellData.getValue().get(fieldName)));
+        });
+        // Set column width to content (minimum 120 px)
+        col.setPrefWidth(Math.max(120, fieldName.length() * 12.0));
+        return col;
+    }
+
+    private static String formatForTableView(Object value) {
+        switch (value) {
+            case null -> {
+                return "";
+            }
+            case Map<?, ?> map -> {
+                StringBuilder sb = new StringBuilder("{");
+                boolean first = true;
+                for (Map.Entry<?, ?> e : map.entrySet()) {
+                    if (!first) sb.append(", ");
+                    sb.append(e.getKey()).append("=").append(formatForTableView(e.getValue()));
+                    first = false;
+                }
+                sb.append("}");
+                return sb.toString();
+            }
+            case java.util.Collection<?> coll -> {
+                StringBuilder sb = new StringBuilder("[");
+                boolean first = true;
+                for (Object e : coll) {
+                    if (!first) sb.append(", ");
+                    sb.append(formatForTableView(e));
+                    first = false;
+                }
+                sb.append("]");
+                return sb.toString();
+            }
+            default -> {
+            }
+        }
+        return com.dkostin.avro_viewer.app.util.PresentationFormatter.formatValue(value);
+    }
+
     /**
      * Configures events for table rows: double-click or Enter opens JSON view
      */
@@ -73,18 +117,6 @@ public class TableViewWindow {
         currentSchema = schema;
     }
 
-    private static TableColumn<Map<String, Object>, String> getMapStringTableColumn(String fieldName) {
-        TableColumn<Map<String, Object>, String> col = new TableColumn<>(fieldName);
-        // Setting the display of values: null -> "", otherwise toString()
-        col.setCellValueFactory(cellData -> {
-            Object value = cellData.getValue().get(fieldName);
-            return new ReadOnlyStringWrapper(value == null ? "" : value.toString());
-        });
-        // Set column width to content (minimum 120 px)
-        col.setPrefWidth(Math.max(120, fieldName.length() * 12.0));
-        return col;
-    }
-
     /**
      * Converts a GenericRecord list to an ObservableList<Map> for TableView
      */
@@ -103,7 +135,7 @@ public class TableViewWindow {
     private Map<String, Object> recordToMap(GenericRecord record) {
         Map<String, Object> rowMap = new LinkedHashMap<>();
         for (Schema.Field field : currentSchema.getFields()) {
-            rowMap.put(field.name(), record.get(field.name()));
+            rowMap.put(field.name(), com.dkostin.avro_viewer.app.util.AvroNormalizer.normalize(record.get(field.name()), field.schema()));
         }
         return rowMap;
     }
