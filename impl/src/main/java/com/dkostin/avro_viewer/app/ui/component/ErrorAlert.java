@@ -6,6 +6,7 @@ public class ErrorAlert {
 
     public static void showError(String title, Throwable ex) {
         Alert a = new Alert(Alert.AlertType.ERROR);
+        System.out.println("Error: " + title + " - " + ex.getMessage() + " : " + ex);
         a.setTitle(title);
         a.setHeaderText(ex.getClass().getSimpleName());
         a.setContentText(ex.getMessage());

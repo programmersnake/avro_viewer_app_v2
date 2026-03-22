@@ -250,7 +250,7 @@ public class MainController {
             if (activeSearchTask != task) return;
 
             SearchResult result = task.getValue();
-            tableViewWindow.updateTableData(result.records(), result.schema());
+            tableViewWindow.updateSearchData(result.records(), result.schema());
 
             String tail = result.truncated() ? " (stopped by maxResults)" : "";
             resultsLabel.setText("Results: " + result.records().size() + tail);

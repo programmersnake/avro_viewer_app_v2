@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @UtilityClass
 public final class MapFlattener {
@@ -34,12 +35,15 @@ public final class MapFlattener {
                     flatRow.put(currentPath, "");
                     return;
                 }
-                // Check if it's an array of primitives
-                Object first = coll.iterator().next();
-                boolean isPrimitive = first instanceof CharSequence || first instanceof Number || first instanceof Boolean || first instanceof Enum;
+                // A collection is "primitive" ONLY IF every element is a simple type
+                boolean isPrimitive = coll.stream().allMatch(e ->
+                        e instanceof CharSequence || e instanceof Number
+                                || e instanceof Boolean || e instanceof Enum);
                 if (isPrimitive) {
-                    // Join with |
-                    String joined = coll.stream().map(PresentationFormatter::formatValue).reduce((a, b) -> a + "|" + b).orElse("");
+                    // Join with | (O(n) via Collectors.joining)
+                    String joined = coll.stream()
+                            .map(PresentationFormatter::formatValue)
+                            .collect(Collectors.joining("|"));
                     flatRow.put(currentPath, joined);
                 } else {
                     // Complex objects -> JSON
