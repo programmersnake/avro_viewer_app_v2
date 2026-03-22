@@ -10,7 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class AvroNormalizerTest {
 
@@ -47,6 +48,23 @@ class AvroNormalizerTest {
         Map<String, Object> map = (Map<String, Object>) normalized;
 
         assertEquals(new BigDecimal("1234.5678"), map.get("salary"));
+        assertEquals(new BigDecimal("1234.5678"), map.get("salary"));
         assertEquals(new BigDecimal("50.0000"), map.get("bonus"));
+    }
+
+    @Test
+    void testNormalizeCollectionsAndPrimitives() {
+        assertEquals("test", AvroNormalizer.normalize("test", null));
+        assertEquals(123, AvroNormalizer.normalize(123, null));
+
+        Map<String, Object> inputMap = Map.of("key", "value");
+        Object mapOut = AvroNormalizer.normalize(inputMap, null);
+        assertInstanceOf(Map.class, mapOut);
+        assertEquals("value", ((Map<?, ?>) mapOut).get("key"));
+
+        java.util.List<String> list = java.util.Arrays.asList("A", "B");
+        Object listOut = AvroNormalizer.normalize(list, null);
+        assertInstanceOf(java.util.Collection.class, listOut);
+        assertEquals(2, ((java.util.Collection<?>) listOut).size());
     }
 }
