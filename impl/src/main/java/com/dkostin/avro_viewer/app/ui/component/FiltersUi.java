@@ -1,6 +1,7 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterRowModel;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import javafx.collections.FXCollections;
@@ -20,8 +21,9 @@ import java.util.List;
  * UI component for managing dynamic filters (condition strings)
  */
 public class FiltersUi {
+
     private final VBox filtersContainer;
-    private final ObservableList<String> availableFields = FXCollections.observableArrayList();
+    private final ObservableList<FilterOption> availableFields = FXCollections.observableArrayList();
     private final List<FilterRowModel> filterModels = new ArrayList<>();
     private final List<FilterRowView> filterViews = new ArrayList<>();
 
@@ -47,7 +49,7 @@ public class FiltersUi {
         FilterRowModel model = new FilterRowModel();
         filterModels.add(model);
         // Create controls for the field, operator, and value
-        ComboBox<String> fieldCombo = new ComboBox<>(availableFields);
+        ComboBox<FilterOption> fieldCombo = new ComboBox<>(availableFields);
         fieldCombo.setPromptText("Field");
         fieldCombo.setPrefWidth(220);
 
@@ -105,16 +107,20 @@ public class FiltersUi {
      * Updates the list of available fields in all Comboboxes based on the new Avro schema
      */
     public void updateFieldOptions(Schema schema) {
-        List<String> fieldNames = (schema != null)
-                ? schema.getFields().stream().map(Schema.Field::name).toList()
-                : List.of();
-        availableFields.setAll(fieldNames); // update the shared field list
+        List<FilterOption> options = new ArrayList<>();
+        options.add(FilterOption.ALL_FIELDS); // wildcard always first
+        if (schema != null) {
+            schema.getFields().stream()
+                    .map(f -> FilterOption.ofField(f.name()))
+                    .forEach(options::add);
+        }
+        availableFields.setAll(options);
 
         // For each filter row, check if the selected field is still available
         for (FilterRowView view : filterViews) {
-            String selectedField = view.fieldCombo().getValue();
-            if (selectedField != null && !availableFields.contains(selectedField)) {
-                // If the previously selected field is missing in the new schema – reset the selection
+            FilterOption selected = view.fieldCombo().getValue();
+            if (selected != null && !availableFields.contains(selected)) {
+                // If the previously selected field is missing in the new schema – reset
                 view.fieldCombo().setValue(null);
                 view.model().setField(null);
             }
@@ -127,11 +133,11 @@ public class FiltersUi {
     public List<FilterCriterion> getFilterCriteria() {
         List<FilterCriterion> criteria = new ArrayList<>();
         for (FilterRowModel model : filterModels) {
-            String field = model.getField();
+            FilterOption field = model.getField();
             MatchOperation op = model.getOp();
             String value = model.getValue();
             // Skip if field or operator is not specified
-            if (field == null || field.isBlank() || op == null) continue;
+            if (field == null || op == null) continue;
             // If the operator does not require a value (IS_NULL, NOT_NULL)
             if (op == MatchOperation.IS_NULL || op == MatchOperation.NOT_NULL) {
                 criteria.add(new FilterCriterion(field, op, null));
@@ -148,7 +154,7 @@ public class FiltersUi {
 
     public record FilterRowView(
             HBox root,
-            ComboBox<String> fieldCombo,
+            ComboBox<FilterOption> fieldCombo,
             ComboBox<MatchOperation> opCombo,
             TextField valueField,
             Button removeBtn,
@@ -156,3 +162,5 @@ public class FiltersUi {
     ) {
     }
 }
+
+

@@ -6,8 +6,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public final class FilterRowModel {
-    private String field;
+    private FilterOption field;
     private MatchOperation op = MatchOperation.CONTAINS;
     private String value;
 }
+
 

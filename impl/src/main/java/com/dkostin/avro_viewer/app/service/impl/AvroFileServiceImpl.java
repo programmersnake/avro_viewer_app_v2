@@ -108,7 +108,7 @@ public class AvroFileServiceImpl implements AvroFileService {
                 scanned++;
 
                 if (predicate.test(rec)) {
-                    // Immediately normalize to decouple from Avro's reused buffer
+                    // Normalize only matching records to decouple from Avro's reused buffer
                     @SuppressWarnings("unchecked")
                     Map<String, Object> normalized = (Map<String, Object>) com.dkostin.avro_viewer.app.util.AvroNormalizer.normalize(rec, schema);
                     out.add(normalized);
