@@ -6,31 +6,55 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Flattens nested Map structures into a single-level Map with dot-separated keys.
+ * <p>
+ * Uses a shared {@link StringBuilder} for path construction to minimize GC pressure
+ * from ephemeral String concatenation on deeply nested or high-volume records.
+ */
 @UtilityClass
 public final class MapFlattener {
 
+    /**
+     * Public entry point — delegates to the StringBuilder-backed implementation.
+     */
     public static void flatten(String currentPath, Object node, Map<String, Object> flatRow) {
+        StringBuilder pathBuilder = new StringBuilder(currentPath);
+        flattenInternal(pathBuilder, node, flatRow);
+    }
+
+    /**
+     * Internal recursive implementation using a mutable StringBuilder for path tracking.
+     * The StringBuilder is extended before each recursive call and truncated back (via
+     * {@code setLength}) afterwards, avoiding per-call String allocation.
+     */
+    private static void flattenInternal(StringBuilder pathBuilder, Object node, Map<String, Object> flatRow) {
         switch (node) {
             case null -> {
-                if (!currentPath.isEmpty()) {
-                    flatRow.put(currentPath, "");
+                if (!pathBuilder.isEmpty()) {
+                    flatRow.put(pathBuilder.toString(), "");
                 }
                 return;
             }
 
-
             // Nested Map
             case Map<?, ?> map -> {
+                int savedLen = pathBuilder.length();
                 map.forEach((k, v) -> {
-                    String newPath = currentPath.isEmpty() ? String.valueOf(k) : currentPath + "." + k;
-                    flatten(newPath, v, flatRow);
+                    pathBuilder.setLength(savedLen);
+                    if (savedLen > 0) {
+                        pathBuilder.append('.');
+                    }
+                    pathBuilder.append(k);
+                    flattenInternal(pathBuilder, v, flatRow);
                 });
+                pathBuilder.setLength(savedLen);
                 return;
             }
 
-
             // Arrays / Collections
             case Collection<?> coll -> {
+                String currentPath = pathBuilder.toString();
                 if (coll.isEmpty()) {
                     flatRow.put(currentPath, "");
                     return;
@@ -60,6 +84,6 @@ public final class MapFlattener {
         }
 
         // Fallback for numbers, booleans etc.
-        flatRow.put(currentPath, PresentationFormatter.formatValue(node));
+        flatRow.put(pathBuilder.toString(), PresentationFormatter.formatValue(node));
     }
 }
