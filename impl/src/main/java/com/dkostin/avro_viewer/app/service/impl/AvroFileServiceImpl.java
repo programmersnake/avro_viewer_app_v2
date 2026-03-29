@@ -12,7 +12,6 @@ import org.apache.avro.file.SeekableFileInput;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -170,11 +169,16 @@ public class AvroFileServiceImpl implements AvroFileService {
 
         long startRecord = (long) targetPageIndex * pageSize;
         long skipped = 0;
-        while (skipped < startRecord && session.reader.hasNext()) {
-            session.reader.next();
-            skipped++;
+        try {
+            while (skipped < startRecord && session.reader.hasNext()) {
+                session.reader.next();
+                skipped++;
+            }
+            session.nextPageIndex = targetPageIndex;
+        } catch (Exception e) {
+            closeSessionUnsafe();
+            throw e;
         }
-        session.nextPageIndex = targetPageIndex;
     }
 
     private Page readNextPageFromSession(int pageIndex, int pageSize) {
@@ -204,10 +208,13 @@ public class AvroFileServiceImpl implements AvroFileService {
     }
 
     private DataFileReader<GenericRecord> open(Path file) throws IOException {
-        return new DataFileReader<>(
-                new SeekableFileInput(new File(file.toString())),
-                new GenericDatumReader<>()
-        );
+        SeekableFileInput input = new SeekableFileInput(file.toFile());
+        try {
+            return new DataFileReader<>(input, new GenericDatumReader<>());
+        } catch (IOException e) {
+            input.close();
+            throw e;
+        }
     }
 
     private record PageKey(Path file, long lastModified, int pageIndex, int pageSize) {
@@ -238,10 +245,14 @@ public class AvroFileServiceImpl implements AvroFileService {
         }
 
         static Session open(Path file, long lastModified, int pageSize) throws IOException {
-            DataFileReader<GenericRecord> r = new DataFileReader<>(
-                    new SeekableFileInput(file.toFile()),
-                    new GenericDatumReader<>()
-            );
+            SeekableFileInput input = new SeekableFileInput(file.toFile());
+            DataFileReader<GenericRecord> r;
+            try {
+                r = new DataFileReader<>(input, new GenericDatumReader<>());
+            } catch (IOException e) {
+                input.close();
+                throw e;
+            }
             return new Session(file.normalize(), lastModified, pageSize, r, r.getSchema());
         }
 
