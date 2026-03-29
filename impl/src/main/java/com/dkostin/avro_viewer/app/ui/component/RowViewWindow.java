@@ -114,7 +114,7 @@ public class RowViewWindow {
         copyBtn = new Button("Copy JSON");
         copyBtn.getStyleClass().add(CSS_BTN);
         copyBtn.setAccessibleText("Copy full JSON to clipboard");
-        copyBtn.setOnAction(_ -> handleCopyAction());
+        copyBtn.setOnAction(_ -> handleCopyFullJson());
 
         Button expandAllBtn = new Button("Expand All");
         expandAllBtn.getStyleClass().add(CSS_BTN);
@@ -154,15 +154,15 @@ public class RowViewWindow {
     // --- Actions & Event Handlers ---
 
     private void setupAccelerators(Scene scene) {
-        // CTRL+C -> Copy
+        // CTRL+C -> Smart copy: selected node value or full JSON fallback
         scene.getAccelerators().put(
                 new KeyCodeCombination(KeyCode.C, KeyCombination.SHORTCUT_DOWN),
-                this::handleCopyAction
+                this::handleSmartCopy
         );
 
         // CTRL + PLUS -> Expand All
         scene.getAccelerators().put(
-                new KeyCodeCombination(KeyCode.EQUALS, KeyCombination.SHORTCUT_DOWN), // Equals is often '+' key
+                new KeyCodeCombination(KeyCode.EQUALS, KeyCombination.SHORTCUT_DOWN),
                 () -> expandAll(jsonTreeView.getRoot())
         );
 
@@ -173,17 +173,37 @@ public class RowViewWindow {
         );
     }
 
-    private void handleCopyAction() {
+    /**
+     * Ctrl+C handler: copies the selected node's default value (raw value for primitives,
+     * JSON fragment for containers). Falls back to full JSON if nothing is selected.
+     */
+    private void handleSmartCopy() {
+        TreeItem<JsonTreeNode> selected = jsonTreeView.getSelectionModel().getSelectedItem();
+        if (selected != null && selected.getValue() != null) {
+            JsonTreeNode node = selected.getValue();
+            String text = node.isContainer()
+                    ? JsonSerializer.toJsonSafe(node.value())
+                    : rawValueString(node);
+            copyToClipboard(text);
+            showCopyFeedbackOnCell();
+        } else {
+            // fallback: copy full JSON
+            handleCopyFullJson();
+        }
+    }
+
+    /**
+     * Toolbar "Copy JSON" button: always copies the entire record.
+     */
+    private void handleCopyFullJson() {
         if (this.rawJsonCache == null) return;
 
-        var content = new ClipboardContent();
-        content.putString(this.rawJsonCache);
-        Clipboard.getSystemClipboard().setContent(content);
+        copyToClipboard(this.rawJsonCache);
 
         // UX Feedback: Change button text temporarily
         String originalText = copyBtn.getText();
         copyBtn.setText("Copied!");
-        copyBtn.setDisable(true); // Prevent spamming
+        copyBtn.setDisable(true);
 
         PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
         pause.setOnFinished(_ -> {
@@ -210,8 +230,6 @@ public class RowViewWindow {
         }
     }
 
-    // --- Data Logic (Tree Building) ---
-
     private void collapseAll(TreeItem<?> item) {
         if (item != null && !item.isLeaf()) {
             item.setExpanded(false);
@@ -220,6 +238,53 @@ public class RowViewWindow {
             }
         }
     }
+
+    // --- Clipboard Helpers ---
+
+    private static void copyToClipboard(String text) {
+        var content = new ClipboardContent();
+        content.putString(text);
+        Clipboard.getSystemClipboard().setContent(content);
+    }
+
+    /**
+     * Extracts the raw, unformatted value string from a primitive node.
+     * This is the domain value, NOT the UI-formatted text (no quotes, no formatting).
+     */
+    private static String rawValueString(JsonTreeNode node) {
+        return switch (node.type()) {
+            case NULL -> "null";
+            case NUMBER -> com.dkostin.avro_viewer.app.util.PresentationFormatter.formatValue(node.value());
+            default -> String.valueOf(node.value());
+        };
+    }
+
+    /**
+     * Shows a temporary Tooltip on the currently selected tree cell as copy feedback.
+     */
+    private void showCopyFeedbackOnCell() {
+        int selectedIndex = jsonTreeView.getSelectionModel().getSelectedIndex();
+        if (selectedIndex < 0) return;
+
+        // Lookup the visible cell for the selected index
+        jsonTreeView.lookupAll(".tree-cell").stream()
+                .filter(n -> n instanceof JsonTreeCell cell && cell.getIndex() == selectedIndex)
+                .findFirst()
+                .ifPresent(n -> {
+                    Tooltip tip = new Tooltip("Copied!");
+                    tip.setAutoHide(true);
+
+                    var bounds = n.localToScreen(n.getBoundsInLocal());
+                    if (bounds != null) {
+                        tip.show(n, bounds.getMaxX() + 4, bounds.getMinY());
+                        PauseTransition hide = new PauseTransition(Duration.seconds(1.2));
+                        hide.setOnFinished(_ -> tip.hide());
+                        hide.play();
+                    }
+                });
+    }
+
+    // --- Data Logic (Tree Building) ---
 
     @SuppressWarnings("unchecked")
     private TreeItem<JsonTreeNode> buildTree(String key, Object data) {
@@ -238,6 +303,11 @@ public class RowViewWindow {
     // --- Inner Classes & Records ---
 
     public record JsonTreeNode(String key, Object value, NodeType type) {
+
+        public boolean isContainer() {
+            return type == NodeType.OBJECT || type == NodeType.ARRAY;
+        }
+
         @Override
         public String toString() {
             return key + (value != null ? ": " + value : "");
@@ -247,9 +317,48 @@ public class RowViewWindow {
     }
 
     /**
-     * Named TreeCell implementation to clean up the init code.
+     * TreeCell with right-click context menu for granular copy operations.
      */
-    private static class JsonTreeCell extends TreeCell<JsonTreeNode> {
+    private class JsonTreeCell extends TreeCell<JsonTreeNode> {
+
+        private final ContextMenu primitiveMenu = new ContextMenu();
+        private final ContextMenu containerMenu = new ContextMenu();
+
+        JsonTreeCell() {
+            // --- Primitive menu: Copy Key, Copy Value ---
+            MenuItem copyKey = new MenuItem("Copy Key");
+            copyKey.setOnAction(_ -> {
+                if (getItem() != null) {
+                    copyToClipboard(getItem().key());
+                    showCopyFeedbackOnCell();
+                }
+            });
+            MenuItem copyValue = new MenuItem("Copy Value");
+            copyValue.setOnAction(_ -> {
+                if (getItem() != null) {
+                    copyToClipboard(rawValueString(getItem()));
+                    showCopyFeedbackOnCell();
+                }
+            });
+            primitiveMenu.getItems().addAll(copyKey, copyValue);
+
+            // --- Container menu: Copy Key, Copy JSON Fragment ---
+            MenuItem copyKeyC = new MenuItem("Copy Key");
+            copyKeyC.setOnAction(_ -> {
+                if (getItem() != null) {
+                    copyToClipboard(getItem().key());
+                    showCopyFeedbackOnCell();
+                }
+            });
+            MenuItem copyFragment = new MenuItem("Copy JSON Fragment");
+            copyFragment.setOnAction(_ -> {
+                if (getItem() != null) {
+                    copyToClipboard(JsonSerializer.toJsonSafe(getItem().value()));
+                    showCopyFeedbackOnCell();
+                }
+            });
+            containerMenu.getItems().addAll(copyKeyC, copyFragment);
+        }
 
         @Override
         protected void updateItem(JsonTreeNode item, boolean empty) {
@@ -258,11 +367,14 @@ public class RowViewWindow {
             if (empty || item == null) {
                 setGraphic(null);
                 setText(null);
+                setContextMenu(null);
                 return;
             }
 
-            boolean isContainer = (item.type() == JsonTreeNode.NodeType.OBJECT
-                    || item.type() == JsonTreeNode.NodeType.ARRAY);
+            boolean isContainer = item.isContainer();
+
+            // Context menu: set based on node type
+            setContextMenu(isContainer ? containerMenu : primitiveMenu);
 
             // 1. Build Key Text
             Text keyText = new Text(item.key());
@@ -322,6 +434,7 @@ public class RowViewWindow {
                     t.setText("null");
                     t.getStyleClass().add(CSS_JSON_NULL);
                 }
+                case OBJECT, ARRAY -> { /* handled in updateItem */ }
             }
             return t;
         }
