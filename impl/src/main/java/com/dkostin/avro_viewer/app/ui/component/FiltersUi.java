@@ -11,6 +11,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
 import org.apache.avro.Schema;
 
 import java.util.ArrayList;
@@ -21,8 +22,8 @@ import java.util.List;
  */
 public class FiltersUi {
 
-    /** Sentinel value used in the Field ComboBox to indicate "search all fields recursively". */
-    public static final String ANY_FIELD = "[Any Field]";
+    /** User-friendly display label for the wildcard field option. */
+    private static final String ANY_FIELD_DISPLAY = "* (All Fields)";
 
     private final VBox filtersContainer;
     private final ObservableList<String> availableFields = FXCollections.observableArrayList();
@@ -54,6 +55,7 @@ public class FiltersUi {
         ComboBox<String> fieldCombo = new ComboBox<>(availableFields);
         fieldCombo.setPromptText("Field");
         fieldCombo.setPrefWidth(220);
+        fieldCombo.setConverter(FIELD_CONVERTER);
 
         ComboBox<MatchOperation> opCombo = new ComboBox<>(FXCollections.observableArrayList(MatchOperation.values()));
         opCombo.setPromptText("Condition");
@@ -110,7 +112,7 @@ public class FiltersUi {
      */
     public void updateFieldOptions(Schema schema) {
         List<String> fieldNames = new java.util.ArrayList<>();
-        fieldNames.add(ANY_FIELD); // wildcard always first
+        fieldNames.add(FilterCriterion.ANY_FIELD); // wildcard always first
         if (schema != null) {
             schema.getFields().stream().map(Schema.Field::name).forEach(fieldNames::add);
         }
@@ -152,6 +154,24 @@ public class FiltersUi {
         return criteria;
     }
 
+    /**
+     * Converts the wildcard sentinel '*' to a user-friendly display label.
+     * All other field names are displayed as-is.
+     */
+    private static final StringConverter<String> FIELD_CONVERTER = new StringConverter<>() {
+        @Override
+        public String toString(String value) {
+            if (FilterCriterion.ANY_FIELD.equals(value)) return ANY_FIELD_DISPLAY;
+            return value;
+        }
+
+        @Override
+        public String fromString(String display) {
+            if (ANY_FIELD_DISPLAY.equals(display)) return FilterCriterion.ANY_FIELD;
+            return display;
+        }
+    };
+
     public record FilterRowView(
             HBox root,
             ComboBox<String> fieldCombo,
@@ -162,3 +182,4 @@ public class FiltersUi {
     ) {
     }
 }
+

@@ -63,9 +63,18 @@ class DeepSearchEngineTest {
     }
 
     @Test
-    void matchesMapKeys() {
+    void doesNotMatchMapKeys() {
+        // Finding 3: keys are NOT searched — only values.
+        // Searching for "specialKey" must NOT match just because it's a field name.
         var row = Map.of("specialKey", "irrelevant");
-        assertTrue(DeepSearchEngine.matches(row, "specialKey", MatchOperation.CONTAINS));
+        assertFalse(DeepSearchEngine.matches(row, "specialKey", MatchOperation.CONTAINS));
+    }
+
+    @Test
+    void matchesMapValues() {
+        // Verify that values inside maps ARE matched.
+        var row = Map.of("field", "targetValue");
+        assertTrue(DeepSearchEngine.matches(row, "targetValue", MatchOperation.CONTAINS));
     }
 
     @Test
@@ -82,3 +91,4 @@ class DeepSearchEngineTest {
         assertFalse(DeepSearchEngine.matches(null, "any", MatchOperation.EQUALS));
     }
 }
+

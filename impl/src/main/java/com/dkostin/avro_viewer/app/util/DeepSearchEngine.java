@@ -19,10 +19,11 @@ public final class DeepSearchEngine {
      * the given {@code operation} against {@code expectedQuery}.
      *
      * <ul>
-     *   <li>Leaves (String, Number, Boolean, Enum): formatted via
-     *       {@link PresentationFormatter#formatValue(Object)} then evaluated
-     *       with {@code operation.matches(formatted, expectedQuery)}.</li>
-     *   <li>Maps: recursively checks both keys (as strings) and values.</li>
+     *   <li>Leaves (String, Number, Boolean, Enum): passed directly to
+     *       {@link MatchOperation#matches(Object, Object)} which handles
+     *       string normalization (including BigDecimal formatting).</li>
+     *   <li>Maps: recursively checks <b>values only</b> (not keys, to avoid
+     *       false positives on schema field names).</li>
      *   <li>Collections/Arrays: recursively checks each element with short-circuiting.</li>
      *   <li>Null: returns {@code false} (unless the operation is IS_NULL).</li>
      * </ul>
@@ -34,12 +35,10 @@ public final class DeepSearchEngine {
 
         if (node == null) return false;
 
-        // Map: check keys and values recursively
+        // Map: recurse into values only (not keys — avoids matching schema field names)
         if (node instanceof Map<?, ?> map) {
-            return map.entrySet().stream().anyMatch(e ->
-                    operation.matches(String.valueOf(e.getKey()), expectedQuery)
-                            || matches(e.getValue(), expectedQuery, operation)
-            );
+            return map.values().stream()
+                    .anyMatch(v -> matches(v, expectedQuery, operation));
         }
 
         // Collection: check each element recursively (short-circuits via anyMatch)
@@ -47,8 +46,8 @@ public final class DeepSearchEngine {
             return coll.stream().anyMatch(item -> matches(item, expectedQuery, operation));
         }
 
-        // Leaf value: format to the exact string the user sees in the UI, then match
-        String formatted = PresentationFormatter.formatValue(node);
-        return operation.matches(formatted, expectedQuery);
+        // Leaf value: delegate directly to MatchOperation (handles BigDecimal, CharSequence, etc.)
+        return operation.matches(node, expectedQuery);
     }
 }
+

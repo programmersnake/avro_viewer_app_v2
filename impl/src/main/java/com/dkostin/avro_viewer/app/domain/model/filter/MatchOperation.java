@@ -1,6 +1,9 @@
 package com.dkostin.avro_viewer.app.domain.model.filter;
 
+import com.dkostin.avro_viewer.app.util.PresentationFormatter;
 import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
 
 @RequiredArgsConstructor
 public enum MatchOperation {
@@ -54,13 +57,17 @@ public enum MatchOperation {
     }
 
     /**
-     * Normalizes Avro types (Utf8, CharSequence, Enum) to a plain String for comparison.
+     * Normalizes any value to a plain String for comparison.
+     * Handles Avro types (Utf8, CharSequence, Enum) and BigDecimal
+     * (via {@link PresentationFormatter#formatBigDecimal(BigDecimal)}).
      */
     private static String normalize(Object value) {
         if (value == null) return "";
+        if (value instanceof BigDecimal bd) return PresentationFormatter.formatBigDecimal(bd);
         if (value instanceof CharSequence cs) return cs.toString();
         if (value instanceof Enum<?> e) return e.name();
         return String.valueOf(value);
     }
 }
+
 
