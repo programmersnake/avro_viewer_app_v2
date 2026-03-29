@@ -20,6 +20,10 @@ import java.util.List;
  * UI component for managing dynamic filters (condition strings)
  */
 public class FiltersUi {
+
+    /** Sentinel value used in the Field ComboBox to indicate "search all fields recursively". */
+    public static final String ANY_FIELD = "[Any Field]";
+
     private final VBox filtersContainer;
     private final ObservableList<String> availableFields = FXCollections.observableArrayList();
     private final List<FilterRowModel> filterModels = new ArrayList<>();
@@ -105,9 +109,11 @@ public class FiltersUi {
      * Updates the list of available fields in all Comboboxes based on the new Avro schema
      */
     public void updateFieldOptions(Schema schema) {
-        List<String> fieldNames = (schema != null)
-                ? schema.getFields().stream().map(Schema.Field::name).toList()
-                : List.of();
+        List<String> fieldNames = new java.util.ArrayList<>();
+        fieldNames.add(ANY_FIELD); // wildcard always first
+        if (schema != null) {
+            schema.getFields().stream().map(Schema.Field::name).forEach(fieldNames::add);
+        }
         availableFields.setAll(fieldNames); // update the shared field list
 
         // For each filter row, check if the selected field is still available

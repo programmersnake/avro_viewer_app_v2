@@ -93,7 +93,7 @@ public class AvroFileServiceImpl implements AvroFileService {
         if (file == null) throw new IllegalArgumentException("file is null");
         if (maxResults <= 0) throw new IllegalArgumentException("maxResults must be > 0");
 
-        var predicate = predicateFactory.compile(criteria);
+        var predicate = predicateFactory.compileForNormalized(criteria);
 
         List<Map<String, Object>> out = new ArrayList<>(Math.min(maxResults, 1024));
         long scanned = 0;
@@ -107,10 +107,11 @@ public class AvroFileServiceImpl implements AvroFileService {
                 GenericRecord rec = reader.next();
                 scanned++;
 
-                if (predicate.test(rec)) {
-                    // Immediately normalize to decouple from Avro's reused buffer
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> normalized = (Map<String, Object>) com.dkostin.avro_viewer.app.util.AvroNormalizer.normalize(rec, schema);
+                // Normalize first so DeepSearchEngine can traverse the clean object graph
+                @SuppressWarnings("unchecked")
+                Map<String, Object> normalized = (Map<String, Object>) com.dkostin.avro_viewer.app.util.AvroNormalizer.normalize(rec, schema);
+
+                if (predicate.test(normalized)) {
                     out.add(normalized);
 
                     if (out.size() >= maxResults) {
