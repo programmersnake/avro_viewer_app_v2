@@ -1,6 +1,7 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterRowModel;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import javafx.collections.FXCollections;
@@ -11,7 +12,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.util.StringConverter;
 import org.apache.avro.Schema;
 
 import java.util.ArrayList;
@@ -22,11 +22,8 @@ import java.util.List;
  */
 public class FiltersUi {
 
-    /** User-friendly display label for the wildcard field option. */
-    private static final String ANY_FIELD_DISPLAY = "* (All Fields)";
-
     private final VBox filtersContainer;
-    private final ObservableList<String> availableFields = FXCollections.observableArrayList();
+    private final ObservableList<FilterOption> availableFields = FXCollections.observableArrayList();
     private final List<FilterRowModel> filterModels = new ArrayList<>();
     private final List<FilterRowView> filterViews = new ArrayList<>();
 
@@ -52,10 +49,9 @@ public class FiltersUi {
         FilterRowModel model = new FilterRowModel();
         filterModels.add(model);
         // Create controls for the field, operator, and value
-        ComboBox<String> fieldCombo = new ComboBox<>(availableFields);
+        ComboBox<FilterOption> fieldCombo = new ComboBox<>(availableFields);
         fieldCombo.setPromptText("Field");
         fieldCombo.setPrefWidth(220);
-        fieldCombo.setConverter(FIELD_CONVERTER);
 
         ComboBox<MatchOperation> opCombo = new ComboBox<>(FXCollections.observableArrayList(MatchOperation.values()));
         opCombo.setPromptText("Condition");
@@ -111,18 +107,20 @@ public class FiltersUi {
      * Updates the list of available fields in all Comboboxes based on the new Avro schema
      */
     public void updateFieldOptions(Schema schema) {
-        List<String> fieldNames = new java.util.ArrayList<>();
-        fieldNames.add(FilterCriterion.ANY_FIELD); // wildcard always first
+        List<FilterOption> options = new ArrayList<>();
+        options.add(FilterOption.ALL_FIELDS); // wildcard always first
         if (schema != null) {
-            schema.getFields().stream().map(Schema.Field::name).forEach(fieldNames::add);
+            schema.getFields().stream()
+                    .map(f -> FilterOption.ofField(f.name()))
+                    .forEach(options::add);
         }
-        availableFields.setAll(fieldNames); // update the shared field list
+        availableFields.setAll(options);
 
         // For each filter row, check if the selected field is still available
         for (FilterRowView view : filterViews) {
-            String selectedField = view.fieldCombo().getValue();
-            if (selectedField != null && !availableFields.contains(selectedField)) {
-                // If the previously selected field is missing in the new schema – reset the selection
+            FilterOption selected = view.fieldCombo().getValue();
+            if (selected != null && !availableFields.contains(selected)) {
+                // If the previously selected field is missing in the new schema – reset
                 view.fieldCombo().setValue(null);
                 view.model().setField(null);
             }
@@ -135,11 +133,11 @@ public class FiltersUi {
     public List<FilterCriterion> getFilterCriteria() {
         List<FilterCriterion> criteria = new ArrayList<>();
         for (FilterRowModel model : filterModels) {
-            String field = model.getField();
+            FilterOption field = model.getField();
             MatchOperation op = model.getOp();
             String value = model.getValue();
             // Skip if field or operator is not specified
-            if (field == null || field.isBlank() || op == null) continue;
+            if (field == null || op == null) continue;
             // If the operator does not require a value (IS_NULL, NOT_NULL)
             if (op == MatchOperation.IS_NULL || op == MatchOperation.NOT_NULL) {
                 criteria.add(new FilterCriterion(field, op, null));
@@ -154,27 +152,9 @@ public class FiltersUi {
         return criteria;
     }
 
-    /**
-     * Converts the wildcard sentinel '*' to a user-friendly display label.
-     * All other field names are displayed as-is.
-     */
-    private static final StringConverter<String> FIELD_CONVERTER = new StringConverter<>() {
-        @Override
-        public String toString(String value) {
-            if (FilterCriterion.ANY_FIELD.equals(value)) return ANY_FIELD_DISPLAY;
-            return value;
-        }
-
-        @Override
-        public String fromString(String display) {
-            if (ANY_FIELD_DISPLAY.equals(display)) return FilterCriterion.ANY_FIELD;
-            return display;
-        }
-    };
-
     public record FilterRowView(
             HBox root,
-            ComboBox<String> fieldCombo,
+            ComboBox<FilterOption> fieldCombo,
             ComboBox<MatchOperation> opCombo,
             TextField valueField,
             Button removeBtn,
@@ -182,4 +162,5 @@ public class FiltersUi {
     ) {
     }
 }
+
 

@@ -1,6 +1,5 @@
 package com.dkostin.avro_viewer.app.domain.model.filter;
 
-import com.dkostin.avro_viewer.app.util.PresentationFormatter;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
@@ -10,6 +9,14 @@ public enum MatchOperation {
     EQUALS("equals") {
         @Override
         public boolean matches(Object actual, Object expected) {
+            // Numeric comparison: if actual is a Number, try mathematical equality first
+            if (actual instanceof Number actualNum && expected != null) {
+                try {
+                    return toBigDecimal(actualNum).compareTo(new BigDecimal(normalize(expected))) == 0;
+                } catch (NumberFormatException ignored) {
+                    // expected is not a valid number — fall through to string comparison
+                }
+            }
             return normalize(actual).equals(normalize(expected));
         }
     },
@@ -57,17 +64,29 @@ public enum MatchOperation {
     }
 
     /**
-     * Normalizes any value to a plain String for comparison.
-     * Handles Avro types (Utf8, CharSequence, Enum) and BigDecimal
-     * (via {@link PresentationFormatter#formatBigDecimal(BigDecimal)}).
+     * Normalizes any value to a plain String for lexical comparison.
+     * Handles BigDecimal (strips trailing zeros), CharSequence (Avro Utf8), and Enum.
      */
     private static String normalize(Object value) {
         if (value == null) return "";
-        if (value instanceof BigDecimal bd) return PresentationFormatter.formatBigDecimal(bd);
+        if (value instanceof BigDecimal bd) return bd.stripTrailingZeros().toPlainString();
         if (value instanceof CharSequence cs) return cs.toString();
         if (value instanceof Enum<?> e) return e.name();
         return String.valueOf(value);
     }
+
+    /**
+     * Converts any Number to BigDecimal for precise mathematical comparison.
+     */
+    private static BigDecimal toBigDecimal(Number n) {
+        if (n instanceof BigDecimal bd) return bd;
+        if (n instanceof Long l) return BigDecimal.valueOf(l);
+        if (n instanceof Integer i) return BigDecimal.valueOf(i);
+        if (n instanceof Double d) return BigDecimal.valueOf(d);
+        if (n instanceof Float f) return BigDecimal.valueOf(f.doubleValue());
+        return new BigDecimal(n.toString());
+    }
 }
+
 
 

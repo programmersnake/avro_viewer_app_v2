@@ -1,12 +1,18 @@
 package com.dkostin.avro_viewer.app.domain.model.filter;
 
-public record FilterCriterion(String field, MatchOperation op, Object value) {
-
-    /** Sentinel field value meaning "search all fields recursively". Uses '*' which is not a valid Avro field name. */
-    public static final String ANY_FIELD = "*";
+/**
+ * A single filter criterion: which field to search, the match operation, and the expected value.
+ */
+public record FilterCriterion(FilterOption field, MatchOperation op, Object value) {
 
     /** Returns true if this criterion targets all fields (deep recursive search). */
     public boolean isWildcard() {
-        return ANY_FIELD.equals(field);
+        return field != null && field.wildcard();
+    }
+
+    /** Returns the schema field name, or {@code null} if the field is unset. */
+    public String fieldName() {
+        return field != null ? field.fieldName() : null;
     }
 }
+
