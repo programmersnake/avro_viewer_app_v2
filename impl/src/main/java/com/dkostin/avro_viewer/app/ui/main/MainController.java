@@ -36,6 +36,12 @@ import java.util.Map;
  */
 public class MainController {
 
+    /**
+     * Hard sanity maximum for search results. Prevents OOM from unbounded
+     * materialization of deep HashMaps when users enter excessively large values.
+     */
+    private static final int MAX_RESULTS_LIMIT = 100_000;
+
     // ---- Dependencies (segregated interfaces) ----
     private final FileLoader fileLoader;
     private final PageNavigator pageNavigator;
@@ -143,11 +149,26 @@ public class MainController {
             searchFacade.maxResultsProperty().set(500);
         }
 
-        // Only digits in textfield (keeps UX predictable)
+        // Only digits in textfield + clamp to MAX_RESULTS_LIMIT
         maxResultsField.textProperty().addListener((_, _, newV) -> {
             if (newV == null) return;
             if (!newV.matches("\\d*")) {
                 maxResultsField.setText(newV.replaceAll("[^\\d]", ""));
+                return;
+            }
+            // Clamp excessively large values immediately on input
+            if (!newV.isEmpty()) {
+                try {
+                    int parsed = Integer.parseInt(newV);
+                    if (parsed > MAX_RESULTS_LIMIT) {
+                        maxResultsField.setText(String.valueOf(MAX_RESULTS_LIMIT));
+                        statusLabel.setText("Max results clamped to " + MAX_RESULTS_LIMIT);
+                    }
+                } catch (NumberFormatException ignored) {
+                    // Oversized numeric literal — clamp defensively
+                    maxResultsField.setText(String.valueOf(MAX_RESULTS_LIMIT));
+                    statusLabel.setText("Max results clamped to " + MAX_RESULTS_LIMIT);
+                }
             }
         });
 
@@ -455,6 +476,10 @@ public class MainController {
         try {
             int v = Integer.parseInt(s);
             v = Math.max(1, v);
+            if (v > MAX_RESULTS_LIMIT) {
+                v = MAX_RESULTS_LIMIT;
+                statusLabel.setText("Max results clamped to " + MAX_RESULTS_LIMIT);
+            }
             searchFacade.maxResultsProperty().set(v);
             return v;
         } catch (NumberFormatException ex) {

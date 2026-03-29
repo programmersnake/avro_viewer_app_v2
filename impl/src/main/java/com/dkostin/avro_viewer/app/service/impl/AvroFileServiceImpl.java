@@ -104,6 +104,14 @@ public class AvroFileServiceImpl implements AvroFileService {
             Schema schema = reader.getSchema();
 
             while (reader.hasNext()) {
+                // Periodic interruption check: allows the JavaFX Task.cancel(true)
+                // to forcefully terminate the Avro I/O traversal even though
+                // DataFileReader doesn't natively honour thread interruption.
+                if (Thread.currentThread().isInterrupted()) {
+                    // Return partial results collected so far
+                    return new SearchResult(schema, out, true, scanned);
+                }
+
                 GenericRecord rec = reader.next();
                 scanned++;
 

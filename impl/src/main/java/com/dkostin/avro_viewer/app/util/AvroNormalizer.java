@@ -14,6 +14,14 @@ import java.util.*;
 @UtilityClass
 public final class AvroNormalizer {
 
+    /**
+     * Hard truncation limit for binary payloads (byte[] / ByteBuffer) before
+     * Base64 encoding. Prevents excessive memory allocation when normalizing
+     * large blobs that would otherwise produce multi-megabyte String objects
+     * purely for table display.
+     */
+    private static final int BLOB_TRUNCATION_LIMIT = 1024;
+
     public static Object normalize(Object value, Schema schema) {
         if (value == null) return null;
 
@@ -66,8 +74,16 @@ public final class AvroNormalizer {
                 return new BigDecimal(new BigInteger(bytes), dec.getScale());
             }
 
-            // Fallback for raw bytes
-            return Map.of("__bytes_b64__", Base64.getEncoder().encodeToString(bytes));
+            // Fallback for raw bytes — truncate large blobs to limit GC pressure
+            boolean wasTruncated = bytes.length > BLOB_TRUNCATION_LIMIT;
+            byte[] toEncode = wasTruncated
+                    ? java.util.Arrays.copyOf(bytes, BLOB_TRUNCATION_LIMIT)
+                    : bytes;
+            String encoded = Base64.getEncoder().encodeToString(toEncode);
+            if (wasTruncated) {
+                encoded += " ... [TRUNCATED]";
+            }
+            return Map.of("__bytes_b64__", encoded);
         }
 
         // Strings
