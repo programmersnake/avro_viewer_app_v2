@@ -20,6 +20,9 @@ with a bundled Java Runtime — no separate Java or JavaFX installation required
 - Light / Dark theme
 - **Cross-platform:** Native builds for Windows, macOS, and Linux
 
+### Future Features:
+- to be added.
+
 ---
 
 ## 📥 Downloads & Installation
