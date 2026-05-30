@@ -4,6 +4,7 @@ import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.input.KeyCode;
@@ -50,8 +51,13 @@ public class TableViewWindow {
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && !row.isEmpty()) {
                     Map<String, Object> recordMap = row.getItem();
-                    // Open JSON window with record data
-                    jsonViewer.openJsonWindow(recordMap, tableView.getScene());
+                    String selectedColumn = null;
+                    TablePosition<Map<String, Object>, ?> focusedCell = tableView.getFocusModel().getFocusedCell();
+                    if (focusedCell != null && focusedCell.getTableColumn() != null) {
+                        selectedColumn = focusedCell.getTableColumn().getText();
+                    }
+                    // Open JSON window with record data and target column name
+                    jsonViewer.openJsonWindow(recordMap, tableView.getScene(), selectedColumn);
                 }
             });
             return row;
@@ -61,7 +67,12 @@ public class TableViewWindow {
             if (event.getCode() == KeyCode.ENTER) {
                 Map<String, Object> recordMap = tableView.getSelectionModel().getSelectedItem();
                 if (recordMap != null) {
-                    jsonViewer.openJsonWindow(recordMap, tableView.getScene());
+                    String selectedColumn = null;
+                    TablePosition<Map<String, Object>, ?> focusedCell = tableView.getFocusModel().getFocusedCell();
+                    if (focusedCell != null && focusedCell.getTableColumn() != null) {
+                        selectedColumn = focusedCell.getTableColumn().getText();
+                    }
+                    jsonViewer.openJsonWindow(recordMap, tableView.getScene(), selectedColumn);
                 }
                 event.consume();
             }

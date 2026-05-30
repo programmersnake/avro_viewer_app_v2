@@ -355,6 +355,27 @@
     -fx-fill: -c-text-muted;
 }
 
+/* Highlight search matches */
+.json-highlight-match {
+    -fx-fill: -c-json-highlight;
+    -fx-underline: true;
+}
+
+/* Prevent JavaFX selection from overriding syntax highlighting colors */
+.tree-cell:selected .json-key          { -fx-fill: -c-json-key; }
+.tree-cell:selected .json-key-container { -fx-fill: -c-text; }
+.tree-cell:selected .json-icon-object  { -fx-fill: -c-json-object; }
+.tree-cell:selected .json-icon-array   { -fx-fill: -c-json-array; }
+.tree-cell:selected .json-string       { -fx-fill: -c-json-string; }
+.tree-cell:selected .json-number       { -fx-fill: -c-json-number; }
+.tree-cell:selected .json-boolean      { -fx-fill: -c-json-boolean; }
+.tree-cell:selected .json-null         { -fx-fill: -c-text-muted; }
+.tree-cell:selected .json-meta         { -fx-fill: -c-text-muted; }
+.tree-cell:selected .json-separator    { -fx-fill: -c-text-muted; }
+.tree-cell:selected .json-highlight-match { -fx-fill: -c-json-highlight; }
+
+
+
 /* ---------- TreeView & TreeCells Fix ---------- */
 
 .tree-view {
@@ -366,18 +387,27 @@
 
 .tree-cell {
     -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
     -fx-text-fill: -c-text;
-    -fx-padding: 2 0 2 0;
+    -fx-padding: 3 6 3 6;
 }
 
 .tree-cell:filled:hover {
     -fx-background-color: -c-row-hover;
+    -fx-background-insets: 0;
 }
 
 .tree-cell:filled:selected,
 .tree-cell:selected {
     -fx-background-color: -c-accent-row-selected;
     -fx-text-fill: -c-text;
+    -fx-background-insets: 0;
+}
+
+.tree-view:focused .tree-cell:selected {
+    -fx-background-color: -c-accent-row-selected;
+    -fx-background-insets: 0;
 }
 
 .tree-view > .virtual-flow > .scroll-bar:horizontal {

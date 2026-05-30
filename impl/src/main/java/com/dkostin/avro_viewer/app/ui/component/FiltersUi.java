@@ -12,6 +12,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
 import org.apache.avro.Schema;
 
 import java.util.ArrayList;
@@ -52,6 +53,21 @@ public class FiltersUi {
         ComboBox<FilterOption> fieldCombo = new ComboBox<>(availableFields);
         fieldCombo.setPromptText("Field");
         fieldCombo.setPrefWidth(220);
+        fieldCombo.setEditable(true);
+        fieldCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(FilterOption option) {
+                if (option == null) return "";
+                return option.toString();
+            }
+
+            @Override
+            public FilterOption fromString(String string) {
+                if (string == null || string.isBlank()) return null;
+                if (string.equals("* (All Fields)") || string.equals("*")) return FilterOption.ALL_FIELDS;
+                return FilterOption.ofField(string);
+            }
+        });
 
         ComboBox<MatchOperation> opCombo = new ComboBox<>(FXCollections.observableArrayList(MatchOperation.values()));
         opCombo.setPromptText("Condition");
@@ -65,8 +81,16 @@ public class FiltersUi {
         Button removeBtn = new Button("✕");
         removeBtn.getStyleClass().addAll("btn", "btn-icon");
 
-        // Bind UI fields to the model
-        fieldCombo.valueProperty().addListener((_, _, newVal) -> model.setField(newVal));
+        // Bind UI fields to the model - use editor textProperty for keystroke updates
+        fieldCombo.getEditor().textProperty().addListener((_, _, newVal) -> {
+            if (newVal == null || newVal.isBlank()) {
+                model.setField(null);
+            } else if (newVal.equals("* (All Fields)") || newVal.equals("*")) {
+                model.setField(FilterOption.ALL_FIELDS);
+            } else {
+                model.setField(FilterOption.ofField(newVal));
+            }
+        });
         opCombo.valueProperty().addListener((_, _, newVal) -> model.setOp(newVal));
         valueField.textProperty().addListener((_, _, newVal) -> model.setValue(newVal));
         // Disable the value field for IS_NULL/NOT_NULL operations
@@ -118,11 +142,13 @@ public class FiltersUi {
 
         // For each filter row, check if the selected field is still available
         for (FilterRowView view : filterViews) {
-            FilterOption selected = view.fieldCombo().getValue();
-            if (selected != null && !availableFields.contains(selected)) {
-                // If the previously selected field is missing in the new schema – reset
-                view.fieldCombo().setValue(null);
-                view.model().setField(null);
+            FilterOption selected = view.model().getField();
+            if (selected != null && !selected.wildcard() && !selected.fieldName().contains(".")) {
+                if (!availableFields.contains(selected)) {
+                    // If the previously selected field is missing in the new schema – reset
+                    view.fieldCombo().setValue(null);
+                    view.model().setField(null);
+                }
             }
         }
     }

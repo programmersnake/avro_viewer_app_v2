@@ -39,7 +39,10 @@ public class RowViewWindow {
     private Stage jsonStage;
     private TreeView<JsonTreeNode> jsonTreeView;
     private String rawJsonCache;
+    private Map<String, Object> currentRowCache;
+    private String currentFilterQuery = "";
     private Button copyBtn; // Reference needed for feedback animation
+    private TextField filterField;
 
     // --- Public API ---
 
@@ -58,16 +61,48 @@ public class RowViewWindow {
     }
 
     public void openJsonWindow(Map<String, Object> row, Scene ownerScene) {
+        openJsonWindow(row, ownerScene, null);
+    }
+
+    public void openJsonWindow(Map<String, Object> row, Scene ownerScene, String highlightKey) {
         try {
+            this.currentRowCache = row;
             this.rawJsonCache = JsonSerializer.toJsonSafe(row);
 
             if (jsonStage == null) {
                 initStage(ownerScene);
             }
 
+            if (filterField != null) {
+                filterField.clear();
+            }
+            this.currentFilterQuery = "";
+
             TreeItem<JsonTreeNode> root = buildTree("root", row);
             root.setExpanded(true);
             jsonTreeView.setRoot(root);
+
+            if (highlightKey != null) {
+                TreeItem<JsonTreeNode> targetItem = null;
+                for (TreeItem<JsonTreeNode> child : root.getChildren()) {
+                    if (child.getValue() != null && highlightKey.equals(child.getValue().key())) {
+                        targetItem = child;
+                        break;
+                    }
+                }
+
+                if (targetItem != null) {
+                    targetItem.setExpanded(true);
+                    jsonTreeView.getSelectionModel().select(targetItem);
+                    final TreeItem<JsonTreeNode> finalTarget = targetItem;
+                    javafx.application.Platform.runLater(() -> {
+                        int index = jsonTreeView.getRow(finalTarget);
+                        if (index >= 0) {
+                            jsonTreeView.scrollTo(index);
+                        }
+                    });
+                }
+            }
 
             jsonStage.show();
             jsonStage.toFront();
@@ -75,6 +110,51 @@ public class RowViewWindow {
         } catch (Exception ex) {
             showError("JSON structure view failed", ex);
         }
+    }
+
+    private void applyFilter(String query) {
+        if (currentRowCache == null) return;
+        this.currentFilterQuery = query == null ? "" : query.trim().toLowerCase();
+
+        TreeItem<JsonTreeNode> root = buildTree("root", currentRowCache);
+        if (!currentFilterQuery.isEmpty()) {
+            TreeItem<JsonTreeNode> filteredRoot = filterNode(root, currentFilterQuery);
+            if (filteredRoot == null) {
+                filteredRoot = new TreeItem<>(new JsonTreeNode("No matches", null, JsonTreeNode.NodeType.STRING));
+            }
+            filteredRoot.setExpanded(true);
+            jsonTreeView.setRoot(filteredRoot);
+        } else {
+            root.setExpanded(true);
+            jsonTreeView.setRoot(root);
+        }
+    }
+
+    private TreeItem<JsonTreeNode> filterNode(TreeItem<JsonTreeNode> node, String query) {
+        JsonTreeNode value = node.getValue();
+        boolean matchesSelf = false;
+        if (value != null) {
+            String key = value.key() != null ? value.key().toLowerCase() : "";
+            String valStr = value.value() != null ? String.valueOf(value.value()).toLowerCase() : "";
+            matchesSelf = key.contains(query) || valStr.contains(query);
+        }
+
+        List<TreeItem<JsonTreeNode>> matchingChildren = new java.util.ArrayList<>();
+        for (TreeItem<JsonTreeNode> child : node.getChildren()) {
+            TreeItem<JsonTreeNode> filteredChild = filterNode(child, query);
+            if (filteredChild != null) {
+                matchingChildren.add(filteredChild);
+            }
+        }
+
+        if (matchesSelf || !matchingChildren.isEmpty()) {
+            TreeItem<JsonTreeNode> copy = new TreeItem<>(value);
+            copy.getChildren().addAll(matchingChildren);
+            copy.setExpanded(true);
+            return copy;
+        }
+
+        return null;
     }
 
     // --- Initialization Logic ---
@@ -126,7 +206,19 @@ public class RowViewWindow {
         collapseBtn.setAccessibleText("Collapse all nodes");
         collapseBtn.setOnAction(_ -> handleCollapseAction());
 
-        ToolBar toolBar = new ToolBar(copyBtn, new Separator(), expandAllBtn, collapseBtn);
+        filterField = new TextField();
+        filterField.setPromptText("Filter...");
+        filterField.setPrefWidth(140);
+        filterField.textProperty().addListener((_, _, newVal) -> applyFilter(newVal));
+
+        ToolBar toolBar = new ToolBar(
+                copyBtn, 
+                new Separator(), 
+                expandAllBtn, 
+                collapseBtn, 
+                new Separator(), 
+                filterField
+        );
         toolBar.getStyleClass().add(CSS_TOPBAR);
         return toolBar;
     }
@@ -318,13 +410,29 @@ public class RowViewWindow {
 
     /**
      * TreeCell with right-click context menu for granular copy operations.
+     * Reuses persistent child nodes to avoid garbage collection churn and layout jitters.
      */
     private class JsonTreeCell extends TreeCell<JsonTreeNode> {
 
         private final ContextMenu primitiveMenu = new ContextMenu();
         private final ContextMenu containerMenu = new ContextMenu();
 
+        // Persistent sub-nodes to eliminate layout engine recalculation overhead
+        private final Text keyText = new Text();
+        private final Text separatorText = new Text(" : ");
+        private final Text valueText = new Text();
+        private final Text iconText = new Text();
+        private final Text metaText = new Text();
+        private final TextFlow flowContainer = new TextFlow();
+
+        // Tracking fields to skip redundant node rebuilds (preventing color blinking/flashing on selection)
+        private JsonTreeNode lastItem;
+        private String lastFilterQuery = "";
+
         JsonTreeCell() {
+            // Apply CSS styles to static components
+            separatorText.getStyleClass().add(CSS_JSON_SEPARATOR);
+
             // --- Primitive menu: Copy Key, Copy Value ---
             MenuItem copyKey = new MenuItem("Copy Key");
             copyKey.setOnAction(_ -> {
@@ -368,6 +476,8 @@ public class RowViewWindow {
                 setGraphic(null);
                 setText(null);
                 setContextMenu(null);
+                lastItem = null;
+                lastFilterQuery = "";
                 return;
             }
 
@@ -376,67 +486,87 @@ public class RowViewWindow {
             // Context menu: set based on node type
             setContextMenu(isContainer ? containerMenu : primitiveMenu);
 
-            // 1. Build Key Text
-            Text keyText = new Text(item.key());
+            // If the item and filter query are unchanged, early exit (keeps graphic intact and prevents blink)
+            if (item.equals(lastItem) && currentFilterQuery.equals(lastFilterQuery)) {
+                return;
+            }
+
+            lastItem = item;
+            lastFilterQuery = currentFilterQuery;
+
+            // 1. Configure Key Text
+            keyText.getStyleClass().clear();
             keyText.getStyleClass().add(isContainer ? CSS_JSON_KEY_CONTAINER : CSS_JSON_KEY);
+            if (!currentFilterQuery.isEmpty() && item.key().toLowerCase().contains(currentFilterQuery)) {
+                keyText.getStyleClass().add("json-highlight-match");
+            }
+            keyText.setText(item.key());
 
             // 2. Build Value Flow
-            TextFlow flow;
+            flowContainer.getChildren().clear();
             switch (item.type()) {
                 case OBJECT -> {
-                    Text icon = new Text(" { } ");
-                    icon.getStyleClass().add(CSS_JSON_ICON_OBJECT);
+                    iconText.getStyleClass().clear();
+                    iconText.getStyleClass().add(CSS_JSON_ICON_OBJECT);
+                    iconText.setText(" { } ");
 
                     int size = getTreeItem().getChildren().size();
-                    Text meta = new Text("(" + size + " fields)");
-                    meta.getStyleClass().add(CSS_JSON_META);
+                    metaText.getStyleClass().clear();
+                    metaText.getStyleClass().add(CSS_JSON_META);
+                    metaText.setText("(" + size + " fields)");
 
-                    flow = new TextFlow(keyText, icon, meta);
+                    flowContainer.getChildren().addAll(keyText, iconText, metaText);
                 }
                 case ARRAY -> {
-                    Text icon = new Text(" [ ] ");
-                    icon.getStyleClass().add(CSS_JSON_ICON_ARRAY);
+                    iconText.getStyleClass().clear();
+                    iconText.getStyleClass().add(CSS_JSON_ICON_ARRAY);
+                    iconText.setText(" [ ] ");
 
                     int size = getTreeItem().getChildren().size();
-                    Text meta = new Text(size + " items");
-                    meta.getStyleClass().add(CSS_JSON_META);
+                    metaText.getStyleClass().clear();
+                    metaText.getStyleClass().add(CSS_JSON_META);
+                    metaText.setText(size + " items");
 
-                    flow = new TextFlow(keyText, icon, meta);
+                    flowContainer.getChildren().addAll(keyText, iconText, metaText);
                 }
                 default -> {
-                    Text separator = new Text(" : ");
-                    separator.getStyleClass().add(CSS_JSON_SEPARATOR);
-
-                    Text valueText = createValueText(item);
-                    flow = new TextFlow(keyText, separator, valueText);
+                    updateValueText(item);
+                    flowContainer.getChildren().addAll(keyText, separatorText, valueText);
                 }
             }
 
-            setGraphic(flow);
+            setGraphic(flowContainer);
         }
 
-        private Text createValueText(JsonTreeNode item) {
-            Text t = new Text();
+        private void updateValueText(JsonTreeNode item) {
+            valueText.getStyleClass().clear();
+            String valStr = "";
             switch (item.type()) {
                 case STRING -> {
-                    t.setText("\"" + item.value() + "\"");
-                    t.getStyleClass().add(CSS_JSON_STRING);
+                    valStr = String.valueOf(item.value());
+                    valueText.setText("\"" + valStr + "\"");
+                    valueText.getStyleClass().add(CSS_JSON_STRING);
                 }
                 case NUMBER -> {
-                    t.setText(com.dkostin.avro_viewer.app.util.PresentationFormatter.formatValue(item.value()));
-                    t.getStyleClass().add(CSS_JSON_NUMBER);
+                    valStr = com.dkostin.avro_viewer.app.util.PresentationFormatter.formatValue(item.value());
+                    valueText.setText(valStr);
+                    valueText.getStyleClass().add(CSS_JSON_NUMBER);
                 }
                 case BOOLEAN -> {
-                    t.setText(String.valueOf(item.value()));
-                    t.getStyleClass().add(CSS_JSON_BOOLEAN);
+                    valStr = String.valueOf(item.value());
+                    valueText.setText(valStr);
+                    valueText.getStyleClass().add(CSS_JSON_BOOLEAN);
                 }
                 case NULL -> {
-                    t.setText("null");
-                    t.getStyleClass().add(CSS_JSON_NULL);
+                    valStr = "null";
+                    valueText.setText(valStr);
+                    valueText.getStyleClass().add(CSS_JSON_NULL);
                 }
                 case OBJECT, ARRAY -> { /* handled in updateItem */ }
             }
-            return t;
+            if (!currentFilterQuery.isEmpty() && valStr.toLowerCase().contains(currentFilterQuery)) {
+                valueText.getStyleClass().add("json-highlight-match");
+            }
         }
     }
 }

@@ -3,12 +3,18 @@ package com.dkostin.avro_viewer.app.config;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.util.DeepSearchEngine;
 import com.dkostin.avro_viewer.app.util.PreparedMatcher;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.generic.GenericRecord;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 public final class FilterPredicateFactory {
+
+    private record ResolvedNode(Object value, Schema schema) {}
 
     /**
      * Compiles filter criteria into a predicate on {@link GenericRecord}.
@@ -48,14 +54,92 @@ public final class FilterPredicateFactory {
 
         if (c.isWildcard()) {
             // Wildcard: DFS the entire record
-            return rec -> DeepSearchEngine.matches(rec, matcher);
+            return rec -> DeepSearchEngine.matches(rec, rec.getSchema(), matcher);
         }
 
-        // Specific field: DFS into that field's subtree (handles nested records, arrays, maps)
         String fieldName = c.fieldName();
-        return rec -> DeepSearchEngine.matches(rec.get(fieldName), matcher);
+        if (fieldName == null) {
+            return _ -> false;
+        }
+
+        // Support dot-notation path querying
+        if (fieldName.contains(".")) {
+            String[] path = fieldName.split("\\.");
+            return rec -> {
+                ResolvedNode resolved = resolvePath(rec, rec.getSchema(), path, 0);
+                return DeepSearchEngine.matches(resolved.value(), resolved.schema(), matcher);
+            };
+        }
+
+        // Specific field at root level: DFS into that field's subtree
+        return rec -> {
+            Schema.Field f = rec.getSchema().getField(fieldName);
+            Schema fieldSchema = f != null ? f.schema() : null;
+            return DeepSearchEngine.matches(rec.get(fieldName), fieldSchema, matcher);
+        };
+    }
+
+    private static ResolvedNode resolvePath(Object node, Schema schema, String[] path, int index) {
+        if (node == null || index >= path.length) {
+            return new ResolvedNode(node, schema);
+        }
+        String segment = path[index];
+        Schema unwrappedSchema = unwrapUnion(schema);
+
+        if (node instanceof IndexedRecord rec) {
+            Schema recSchema = unwrappedSchema != null ? unwrappedSchema : rec.getSchema();
+            Schema.Field f = recSchema.getField(segment);
+            if (f == null) return new ResolvedNode(null, null);
+            return resolvePath(rec.get(f.pos()), f.schema(), path, index + 1);
+        }
+        if (node instanceof Map<?, ?> map) {
+            Schema valSchema = unwrappedSchema != null && unwrappedSchema.getType() == Schema.Type.MAP
+                    ? unwrappedSchema.getValueType()
+                    : null;
+            return resolvePath(map.get(segment), valSchema, path, index + 1);
+        }
+        if (node instanceof List<?> list) {
+            try {
+                int idx = Integer.parseInt(segment);
+                if (idx >= 0 && idx < list.size()) {
+                    Schema elemSchema = unwrappedSchema != null && unwrappedSchema.getType() == Schema.Type.ARRAY
+                            ? unwrappedSchema.getElementType()
+                            : null;
+                    return resolvePath(list.get(idx), elemSchema, path, index + 1);
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (node instanceof Collection<?> coll) {
+            Schema elemSchema = unwrappedSchema != null && unwrappedSchema.getType() == Schema.Type.ARRAY
+                    ? unwrappedSchema.getElementType()
+                    : null;
+            List<Object> results = new java.util.ArrayList<>();
+            for (Object item : coll) {
+                ResolvedNode res = resolvePath(item, elemSchema, path, index);
+                if (res.value() != null) {
+                    if (res.value() instanceof Collection<?> subColl) {
+                        results.addAll(subColl);
+                    } else {
+                        results.add(res.value());
+                    }
+                }
+            }
+            return new ResolvedNode(results.isEmpty() ? null : results, elemSchema);
+        }
+        return new ResolvedNode(null, null);
+    }
+
+    private static Schema unwrapUnion(Schema schema) {
+        if (schema != null && schema.getType() == Schema.Type.UNION) {
+            for (Schema s : schema.getTypes()) {
+                if (s.getType() != Schema.Type.NULL) return s;
+            }
+        }
+        return schema;
     }
 }
+
 
 
 

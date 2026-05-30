@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DeepSearchEngineTest {
 
     private boolean matches(Object node, Object query, MatchOperation op) {
-        return DeepSearchEngine.matches(node, new PreparedMatcher(op, query));
+        return DeepSearchEngine.matches(node, null, new PreparedMatcher(op, query));
     }
 
     // --- Leaf tests (normalized data) ---
