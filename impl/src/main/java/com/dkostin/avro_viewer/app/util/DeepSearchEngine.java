@@ -1,12 +1,13 @@
 package com.dkostin.avro_viewer.app.util;
 
-import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import lombok.experimental.UtilityClass;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,7 +23,7 @@ public final class DeepSearchEngine {
 
     /**
      * Tests whether any leaf value reachable from {@code node} satisfies
-     * the given {@code operation} against {@code expectedQuery}.
+     * the compiled {@code matcher}.
      *
      * <ul>
      *   <li>{@link IndexedRecord} (GenericRecord): recurses into each field value.</li>
@@ -30,32 +31,43 @@ public final class DeepSearchEngine {
      *   <li>{@link Collection} (GenericArray, List): recurses into each element.</li>
      *   <li>Binary ({@link ByteBuffer}, {@link GenericData.Fixed}, byte[]): returns false.</li>
      *   <li>Leaves (String, Number, Boolean, Utf8, Enum): delegates to
-     *       {@link MatchOperation#matches(Object, Object)}.</li>
+     *       {@link PreparedMatcher#matches(Object)}.</li>
      * </ul>
      */
-    public static boolean matches(Object node, String expectedQuery, MatchOperation operation) {
-        // Null-check ops at the top level only
-        if (operation == MatchOperation.IS_NULL) return node == null;
-        if (operation == MatchOperation.NOT_NULL) return node != null;
-
-        if (node == null) return false;
+    public static boolean matches(Object node, PreparedMatcher matcher) {
+        if (node == null) {
+            return matcher.matches(null);
+        }
 
         // Avro record (GenericRecord): iterate field values
         if (node instanceof IndexedRecord rec) {
-            return rec.getSchema().getFields().stream()
-                    .anyMatch(f -> matches(rec.get(f.pos()), expectedQuery, operation));
+            List<Schema.Field> fields = rec.getSchema().getFields();
+            for (int i = 0; i < fields.size(); i++) {
+                if (matches(rec.get(fields.get(i).pos()), matcher)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Map (Avro MAP type or normalized Map): recurse into values only
         if (node instanceof Map<?, ?> map) {
-            return map.values().stream()
-                    .anyMatch(v -> matches(v, expectedQuery, operation));
+            for (Object v : map.values()) {
+                if (matches(v, matcher)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Collection/Array (GenericArray extends Collection, or java.util.List)
         if (node instanceof Collection<?> coll) {
-            return coll.stream()
-                    .anyMatch(item -> matches(item, expectedQuery, operation));
+            for (Object item : coll) {
+                if (matches(item, matcher)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Binary data: not searchable
@@ -63,9 +75,10 @@ public final class DeepSearchEngine {
             return false;
         }
 
-        // Leaf value: delegate to MatchOperation (handles Number, CharSequence/Utf8, Enum, etc.)
-        return operation.matches(node, expectedQuery);
+        // Leaf value: delegate to PreparedMatcher (handles Number, CharSequence/Utf8, Enum, etc.)
+        return matcher.matches(node);
     }
 }
+
 
 

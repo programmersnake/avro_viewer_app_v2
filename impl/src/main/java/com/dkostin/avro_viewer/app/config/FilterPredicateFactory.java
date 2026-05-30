@@ -2,6 +2,7 @@ package com.dkostin.avro_viewer.app.config;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.util.DeepSearchEngine;
+import com.dkostin.avro_viewer.app.util.PreparedMatcher;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.List;
@@ -43,18 +44,19 @@ public final class FilterPredicateFactory {
     private Predicate<GenericRecord> toPredicate(FilterCriterion c) {
         var op = c.op();
         Object raw = c.value();
-        String expected = raw != null ? String.valueOf(raw) : null;
+        PreparedMatcher matcher = new PreparedMatcher(op, raw);
 
         if (c.isWildcard()) {
             // Wildcard: DFS the entire record
-            return rec -> DeepSearchEngine.matches(rec, expected, op);
+            return rec -> DeepSearchEngine.matches(rec, matcher);
         }
 
         // Specific field: DFS into that field's subtree (handles nested records, arrays, maps)
         String fieldName = c.fieldName();
-        return rec -> DeepSearchEngine.matches(rec.get(fieldName), expected, op);
+        return rec -> DeepSearchEngine.matches(rec.get(fieldName), matcher);
     }
 }
+
 
 
 

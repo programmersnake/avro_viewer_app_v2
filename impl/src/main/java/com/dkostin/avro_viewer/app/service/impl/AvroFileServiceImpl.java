@@ -102,6 +102,7 @@ public class AvroFileServiceImpl implements AvroFileService {
         try (DataFileReader<GenericRecord> reader = open(file)) {
             Schema schema = reader.getSchema();
 
+            GenericRecord rec = null;
             while (reader.hasNext()) {
                 // Periodic interruption check: allows the JavaFX Task.cancel(true)
                 // to forcefully terminate the Avro I/O traversal even though
@@ -111,7 +112,7 @@ public class AvroFileServiceImpl implements AvroFileService {
                     return new SearchResult(schema, out, true, scanned);
                 }
 
-                GenericRecord rec = reader.next();
+                rec = reader.next(rec);
                 scanned++;
 
                 if (predicate.test(rec)) {
