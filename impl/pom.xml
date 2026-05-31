@@ -17,7 +17,7 @@
         <avro.version>1.12.1</avro.version>
         <snappy.version>1.1.10.5</snappy.version>
         <logback.version>1.5.13</logback.version>
-        <jackson.version>3.0.0</jackson.version>
+        <jackson.version>3.1.4</jackson.version>
     </properties>
 
     <dependencies>
