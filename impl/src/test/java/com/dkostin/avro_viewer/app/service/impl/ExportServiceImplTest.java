@@ -1,9 +1,13 @@
 package com.dkostin.avro_viewer.app.service.impl;
 
+import com.dkostin.avro_viewer.app.config.FlatteningConfig;
+import com.dkostin.avro_viewer.app.service.api.RecordProvider;
+import com.dkostin.avro_viewer.app.service.api.RecordProviderFactory;
 import javafx.collections.FXCollections;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -24,7 +28,7 @@ class ExportServiceImplTest {
 
         // Data setup
         Map<String, Object> level1Data = new LinkedHashMap<>();
-        level1Data.put("level2", new java.math.BigDecimal("1234.5678"));
+        level1Data.put("level2", new BigDecimal("1234.5678"));
 
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("level1", level1Data);
@@ -77,7 +81,7 @@ class ExportServiceImplTest {
         Path tempFile = Files.createTempFile("export", ".json");
 
         Map<String, Object> row = new LinkedHashMap<>();
-        row.put("salary", new java.math.BigDecimal("1234.500"));
+        row.put("salary", new BigDecimal("1234.500"));
         row.put("name", "John");
 
         service.exportTableToJson(tempFile, FXCollections.observableArrayList(row));
@@ -88,5 +92,107 @@ class ExportServiceImplTest {
         assertFalse(data.contains("1234.500"));
 
         Files.deleteIfExists(tempFile);
+    }
+
+    @Test
+    void testExportToCsvStreamingDisjointRecords() throws IOException {
+        ExportServiceImpl service = new ExportServiceImpl();
+        Path tempFile = Files.createTempFile("export-streaming", ".csv");
+
+        List<String> records = Arrays.asList(
+                "{\"id\":1,\"common\":\"val1\",\"onlyA\":\"A\"}",
+                "{\"id\":2,\"common\":\"val2\",\"onlyB\":\"B\"}"
+        );
+
+        RecordProviderFactory factory = () -> new ListRecordProvider(records);
+        FlatteningConfig config = new FlatteningConfig(true, true);
+
+        // Run with semicolon delimiter
+        service.exportToCsvStreaming(tempFile, factory, config, ';', null);
+
+        List<String> lines = Files.readAllLines(tempFile);
+        assertEquals(3, lines.size(), "Should have header and two rows");
+
+        // Headers should contain a union of all possible keys: id, common, onlyA, onlyB
+        String[] headers = lines.get(0).split(";");
+        assertArrayEquals(new String[]{"id", "common", "onlyA", "onlyB"}, headers);
+
+        // Assert row 1 values (strip quotes and split)
+        String[] row1 = lines.get(1).replace("\"", "").split(";", -1);
+        assertArrayEquals(new String[]{"1", "val1", "A", ""}, row1);
+
+        // Assert row 2 values
+        String[] row2 = lines.get(2).replace("\"", "").split(";", -1);
+        assertArrayEquals(new String[]{"2", "val2", "", "B"}, row2);
+
+        Files.deleteIfExists(tempFile);
+    }
+
+    @Test
+    void testExportToCsvStreamingEmptyRecords() throws IOException {
+        ExportServiceImpl service = new ExportServiceImpl();
+        Path tempFile = Files.createTempFile("export-empty", ".csv");
+
+        RecordProviderFactory factory = () -> new ListRecordProvider(List.of());
+        FlatteningConfig config = new FlatteningConfig(true, true);
+
+        service.exportToCsvStreaming(tempFile, factory, config, ',', null);
+
+        List<String> lines = Files.readAllLines(tempFile);
+        assertTrue(lines.isEmpty() || (lines.size() == 1 && lines.get(0).isEmpty()));
+
+        Files.deleteIfExists(tempFile);
+    }
+
+    @Test
+    void testExportToCsvStreamingCancelled() throws IOException {
+        ExportServiceImpl service = new ExportServiceImpl();
+        Path tempFile = Files.createTempFile("export-cancelled", ".csv");
+ 
+        List<String> records = Arrays.asList(
+                "{\"id\":1}",
+                "{\"id\":2}"
+        );
+ 
+        RecordProviderFactory factory = () -> new ListRecordProvider(records);
+        FlatteningConfig config = new FlatteningConfig(true, true);
+ 
+        try {
+            // Simulate interruption
+            Thread.currentThread().interrupt();
+ 
+            assertThrows(IOException.class, () -> {
+                service.exportToCsvStreaming(tempFile, factory, config, ',', null);
+            });
+ 
+            // Ensure thread interrupt flag is cleared before checking file existence so Files.exists doesn't fail
+            assertTrue(Thread.interrupted(), "Interrupt flag should have been set");
+            assertFalse(Files.exists(tempFile), "Output file should be deleted on cancellation");
+        } finally {
+            Thread.interrupted(); // ensure cleanup
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+    private static class ListRecordProvider implements RecordProvider {
+        private final List<String> records;
+        private int idx = 0;
+
+        public ListRecordProvider(List<String> records) {
+            this.records = records;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return idx < records.size();
+        }
+
+        @Override
+        public String nextJsonRecord() {
+            return records.get(idx++);
+        }
+
+        @Override
+        public void close() {}
     }
 }

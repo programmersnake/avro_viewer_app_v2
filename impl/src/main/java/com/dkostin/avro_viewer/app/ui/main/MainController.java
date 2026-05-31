@@ -10,6 +10,7 @@ import com.dkostin.avro_viewer.app.service.api.PageNavigator;
 import com.dkostin.avro_viewer.app.service.api.SearchFacade;
 import com.dkostin.avro_viewer.app.ui.Theme;
 import com.dkostin.avro_viewer.app.ui.component.ErrorAlert;
+import com.dkostin.avro_viewer.app.ui.component.ExportPreviewDialog;
 import com.dkostin.avro_viewer.app.ui.component.FiltersUi;
 import com.dkostin.avro_viewer.app.ui.component.RowViewWindow;
 import com.dkostin.avro_viewer.app.ui.component.TableViewWindow;
@@ -76,6 +77,7 @@ public class MainController {
     // ---- Runtime state ----
     private Scene scene;
     private Task<?> activeSearchTask;
+    private ExportPreviewDialog exportPreviewDialog;
 
     public MainController(AppContext ctx) {
         this.fileLoader = ctx.fileLoader();
@@ -415,23 +417,18 @@ public class MainController {
 
     @FXML
     private void onExportCsv() {
-        if (table.getItems() == null || table.getItems().isEmpty()) {
+        if (!fileLoader.isFileOpen() || table.getItems() == null || table.getItems().isEmpty()) {
             statusLabel.setText("Nothing to export");
             return;
         }
+        getOrCreateExportPreviewDialog().show(table.getScene());
+    }
 
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Export to CSV");
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV (*.csv)", "*.csv"));
-        fc.setInitialFileName("export-" + exportNameSuffix() + ".csv");
-
-        File out = fc.showSaveDialog(table.getScene().getWindow());
-        if (out == null) return;
-
-        executeWithUiUpdate("Export CSV failed", () -> {
-            exportFacade.exportToCsv(out.toPath(), table.getItems());
-            statusLabel.setText("Exported CSV: " + out.getName());
-        });
+    private ExportPreviewDialog getOrCreateExportPreviewDialog() {
+        if (exportPreviewDialog == null) {
+            this.exportPreviewDialog = new ExportPreviewDialog(exportFacade);
+        }
+        return exportPreviewDialog;
     }
 
     // ---------------------------

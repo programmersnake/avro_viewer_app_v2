@@ -1,7 +1,16 @@
 package com.dkostin.avro_viewer.app.service.impl;
 
+import com.dkostin.avro_viewer.app.config.FlatteningConfig;
 import com.dkostin.avro_viewer.app.service.api.ExportService;
+import com.dkostin.avro_viewer.app.service.api.RecordProvider;
+import com.dkostin.avro_viewer.app.service.api.RecordProviderFactory;
 import com.dkostin.avro_viewer.app.util.JsonSerializer;
+import com.dkostin.avro_viewer.app.util.StructuralFlatteningEngine;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SequenceWriter;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import javafx.collections.ObservableList;
 
 
@@ -50,6 +59,79 @@ public class ExportServiceImpl implements ExportService {
                 w.write(String.join(",", vals));
                 w.newLine();
             }
+        }
+    }
+
+    @Override
+    public void exportToCsvStreaming(Path out, RecordProviderFactory providerFactory, FlatteningConfig config, char delimiter, ExportService.ProgressListener listener) throws IOException {
+        try {
+            LinkedHashSet<String> headerKeys = new LinkedHashSet<>();
+            ObjectMapper mapper = new ObjectMapper();
+
+            long count = 0;
+            // Pass 1: Schema Construction (Streaming Scan)
+            try (RecordProvider provider = providerFactory.create()) {
+                while (provider.hasNext()) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new IOException("Export cancelled by user");
+                    }
+                    String json = provider.nextJsonRecord();
+                    JsonNode node = mapper.readTree(json);
+                    Map<String, String> flatRow = StructuralFlatteningEngine.flatten(node, config);
+                    headerKeys.addAll(flatRow.keySet());
+                    count++;
+                    if (listener != null) {
+                        listener.onProgress(1, count, -1);
+                    }
+                }
+            }
+
+            if (Thread.currentThread().isInterrupted()) {
+                throw new IOException("Export cancelled by user");
+            }
+
+            if (headerKeys.isEmpty()) {
+                Files.writeString(out, "", StandardCharsets.UTF_8);
+                return;
+            }
+
+            // Pass 2: Value Output (Streaming Write) using jackson-dataformat-csv
+            CsvMapper csvMapper = new CsvMapper();
+            CsvSchema.Builder schemaBuilder = CsvSchema.builder();
+            for (String h : headerKeys) {
+                schemaBuilder.addColumn(h);
+            }
+
+            CsvSchema csvSchema = schemaBuilder.build()
+                    .withHeader()
+                    .withColumnSeparator(delimiter);
+
+            long current = 0;
+            try (BufferedWriter w = Files.newBufferedWriter(out, StandardCharsets.UTF_8);
+                 SequenceWriter seqWriter = csvMapper.writer(csvSchema).writeValues(w)) {
+                try (RecordProvider provider = providerFactory.create()) {
+                    while (provider.hasNext()) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            throw new IOException("Export cancelled by user");
+                        }
+                        String json = provider.nextJsonRecord();
+                        JsonNode node = mapper.readTree(json);
+                        Map<String, String> flatRow = StructuralFlatteningEngine.flatten(node, config);
+                        seqWriter.write(flatRow);
+                        current++;
+                        if (listener != null) {
+                            listener.onProgress(2, current, count);
+                        }
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            if (Thread.currentThread().isInterrupted()) {
+                try {
+                    Files.deleteIfExists(out);
+                } catch (IOException ignored) {}
+            }
+            throw e;
         }
     }
 
