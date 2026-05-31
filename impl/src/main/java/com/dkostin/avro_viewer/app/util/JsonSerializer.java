@@ -1,10 +1,16 @@
 package com.dkostin.avro_viewer.app.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.StreamWriteFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,30 +25,32 @@ public final class JsonSerializer {
     private static final ObjectMapper COMPACT_MAPPER;
 
     static {
-        com.fasterxml.jackson.databind.module.SimpleModule module = new com.fasterxml.jackson.databind.module.SimpleModule();
-        module.addSerializer(java.math.BigDecimal.class, new com.fasterxml.jackson.databind.JsonSerializer<java.math.BigDecimal>() {
+        SimpleModule module = new SimpleModule();
+        module.addSerializer(java.math.BigDecimal.class, new ValueSerializer<java.math.BigDecimal>() {
             @Override
-            public void serialize(java.math.BigDecimal value, com.fasterxml.jackson.core.JsonGenerator gen, com.fasterxml.jackson.databind.SerializerProvider serializers) throws java.io.IOException {
+            public void serialize(java.math.BigDecimal value, JsonGenerator gen, SerializationContext serializers) {
                 gen.writeNumber(PresentationFormatter.formatBigDecimal(value));
             }
         });
 
-        MAPPER = new ObjectMapper()
-                .findAndRegisterModules()
-                .enable(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN)
+        MAPPER = JsonMapper.builder()
+                .findAndAddModules()
+                .enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)
                 .enable(SerializationFeature.INDENT_OUTPUT)
-                .registerModule(module);
+                .addModule(module)
+                .build();
 
-        COMPACT_MAPPER = new ObjectMapper()
-                .findAndRegisterModules()
-                .enable(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN)
-                .registerModule(module);
+        COMPACT_MAPPER = JsonMapper.builder()
+                .findAndAddModules()
+                .enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)
+                .addModule(module)
+                .build();
     }
 
     public static String toCompactJson(Object object) {
         try {
             return COMPACT_MAPPER.writeValueAsString(toSerializable(object));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize object to JSON", e);
         }
     }
@@ -50,7 +58,7 @@ public final class JsonSerializer {
     public static String toJsonSafe(Object object) {
         try {
             return MAPPER.writeValueAsString(toSerializable(object));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize object to JSON", e);
         }
     }

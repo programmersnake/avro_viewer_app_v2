@@ -1,12 +1,8 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
-import com.dkostin.avro_viewer.app.service.api.ExportFacade;
-import com.dkostin.avro_viewer.app.service.api.ExportService;
 import com.dkostin.avro_viewer.app.config.FlatteningConfig;
+import com.dkostin.avro_viewer.app.service.api.ExportFacade;
 import com.dkostin.avro_viewer.app.util.StructuralFlatteningEngine;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.BooleanProperty;
@@ -17,13 +13,19 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -349,8 +351,9 @@ public class ExportPreviewDialog {
         Task<FlattenResult> task = new Task<>() {
             @Override
             protected FlattenResult call() throws Exception {
-                ObjectMapper mapper = new ObjectMapper()
-                        .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+                ObjectMapper mapper = JsonMapper.builder()
+                        .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+                        .build();
                 List<Map<String, String>> rows = new ArrayList<>();
                 LinkedHashSet<String> headers = new LinkedHashSet<>();
 

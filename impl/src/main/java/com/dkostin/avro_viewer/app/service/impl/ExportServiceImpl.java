@@ -6,13 +6,13 @@ import com.dkostin.avro_viewer.app.service.api.RecordProvider;
 import com.dkostin.avro_viewer.app.service.api.RecordProviderFactory;
 import com.dkostin.avro_viewer.app.util.JsonSerializer;
 import com.dkostin.avro_viewer.app.util.StructuralFlatteningEngine;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SequenceWriter;
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import javafx.collections.ObservableList;
-
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SequenceWriter;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.csv.CsvMapper;
+import tools.jackson.dataformat.csv.CsvSchema;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -66,7 +66,7 @@ public class ExportServiceImpl implements ExportService {
     public void exportToCsvStreaming(Path out, RecordProviderFactory providerFactory, FlatteningConfig config, char delimiter, ExportService.ProgressListener listener) throws IOException {
         try {
             LinkedHashSet<String> headerKeys = new LinkedHashSet<>();
-            ObjectMapper mapper = new ObjectMapper();
+            ObjectMapper mapper = JsonMapper.builder().build();
 
             long count = 0;
             // Pass 1: Schema Construction (Streaming Scan)

@@ -1,10 +1,11 @@
 package com.dkostin.avro_viewer.app.util;
 
 import com.dkostin.avro_viewer.app.config.FlatteningConfig;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Map;
 
@@ -12,8 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class StructuralFlatteningEngineTest {
 
-    private final ObjectMapper mapper = new ObjectMapper()
-            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    private final ObjectMapper mapper = JsonMapper.builder()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .build();
 
     @Test
     void testDeepFlatteningWithArraySuffixing() throws Exception {

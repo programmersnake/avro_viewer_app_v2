@@ -4,8 +4,8 @@ import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.util.DeepSearchEngine;
 import com.dkostin.avro_viewer.app.util.PreparedMatcher;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
 
 import java.util.Collection;
 import java.util.List;
