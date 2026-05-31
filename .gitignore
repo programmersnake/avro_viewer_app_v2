@@ -6,3 +6,5 @@
 /*/target/
 /dist/
 /.project_cartographer/
+.DS_Store
+**/.DS_Store

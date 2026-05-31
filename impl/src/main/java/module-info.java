@@ -5,6 +5,7 @@ module com.dkostin.avro_viewer.app {
     requires static lombok;
     requires org.apache.avro;
     requires com.fasterxml.jackson.databind;
+    requires com.fasterxml.jackson.dataformat.csv;
     requires org.slf4j;
     requires java.naming;
 

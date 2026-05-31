@@ -1,5 +1,7 @@
 package com.dkostin.avro_viewer.app.service.impl;
 
+import com.dkostin.avro_viewer.app.config.FlatteningConfig;
+import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.domain.model.Page;
 import com.dkostin.avro_viewer.app.domain.model.SearchResult;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
@@ -9,6 +11,8 @@ import com.dkostin.avro_viewer.app.service.api.ExportFacade;
 import com.dkostin.avro_viewer.app.service.api.ExportService;
 import com.dkostin.avro_viewer.app.service.api.FileLoader;
 import com.dkostin.avro_viewer.app.service.api.PageNavigator;
+import com.dkostin.avro_viewer.app.service.api.RecordProvider;
+import com.dkostin.avro_viewer.app.service.api.RecordProviderFactory;
 import com.dkostin.avro_viewer.app.service.api.SearchFacade;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -16,6 +20,7 @@ import javafx.collections.ObservableList;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,13 +31,15 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
     private final AvroFileService fileService;
     private final ExportService exportService;
     private final ViewerState state;
+    private final FilterPredicateFactory predicateFactory;
     // Property for maxResults, handled and joined to UI text label
     private final IntegerProperty maxResultsProperty;
 
-    public ViewerServiceImpl(AvroFileService fileService, ExportService exportService, ViewerState state) {
+    public ViewerServiceImpl(AvroFileService fileService, ExportService exportService, ViewerState state, FilterPredicateFactory predicateFactory) {
         this.fileService = fileService;
         this.exportService = exportService;
         this.state = state;
+        this.predicateFactory = predicateFactory;
         this.maxResultsProperty = new SimpleIntegerProperty(state.getMaxResults());
     }
 
@@ -202,5 +209,40 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
     @Override
     public void exportToCsv(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
         exportService.exportTableToCsv(out, rows);
+    }
+
+    @Override
+    public List<String> getSampleRecords(int count) throws IOException {
+        if (state.getFile() == null) {
+            throw new IllegalStateException("No file is currently open");
+        }
+        List<String> samples = new ArrayList<>();
+        try (RecordProvider provider = new AvroRecordProvider(
+                state.getFile(),
+                state.isSearchMode() ? List.copyOf(state.getCriteria()) : List.of(),
+                predicateFactory)) {
+            while (provider.hasNext() && samples.size() < count) {
+                samples.add(provider.nextJsonRecord());
+            }
+        }
+        return samples;
+    }
+
+    @Override
+    public void exportToCsvStreaming(Path out, FlatteningConfig config, char delimiter, ExportService.ProgressListener listener) throws IOException {
+        if (state.getFile() == null) {
+            throw new IllegalStateException("No file is currently open");
+        }
+        Path file = state.getFile();
+        List<FilterCriterion> criteria = List.copyOf(state.getCriteria());
+        boolean searchMode = state.isSearchMode();
+
+        RecordProviderFactory factory = () -> new AvroRecordProvider(
+                file,
+                searchMode ? criteria : List.of(),
+                predicateFactory
+        );
+
+        exportService.exportToCsvStreaming(out, factory, config, delimiter, listener);
     }
 }

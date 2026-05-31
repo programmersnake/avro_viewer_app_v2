@@ -24,7 +24,7 @@ public final class AppContext {
         var avroFileService = new AvroFileServiceImpl(filterPredicateFactory);
         var exportService = new ExportServiceImpl();
 
-        this.viewerService = new ViewerServiceImpl(avroFileService, exportService, viewerState);
+        this.viewerService = new ViewerServiceImpl(avroFileService, exportService, viewerState, filterPredicateFactory);
     }
 
     public RowViewWindow jsonWindow() {
