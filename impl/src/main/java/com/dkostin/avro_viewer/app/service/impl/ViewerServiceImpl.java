@@ -1,19 +1,12 @@
 package com.dkostin.avro_viewer.app.service.impl;
 
-import com.dkostin.avro_viewer.app.config.FlatteningConfig;
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
+import com.dkostin.avro_viewer.app.config.FlatteningConfig;
 import com.dkostin.avro_viewer.app.domain.model.Page;
 import com.dkostin.avro_viewer.app.domain.model.SearchResult;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.domain.state.ViewerState;
-import com.dkostin.avro_viewer.app.service.api.AvroFileService;
-import com.dkostin.avro_viewer.app.service.api.ExportFacade;
-import com.dkostin.avro_viewer.app.service.api.ExportService;
-import com.dkostin.avro_viewer.app.service.api.FileLoader;
-import com.dkostin.avro_viewer.app.service.api.PageNavigator;
-import com.dkostin.avro_viewer.app.service.api.RecordProvider;
-import com.dkostin.avro_viewer.app.service.api.RecordProviderFactory;
-import com.dkostin.avro_viewer.app.service.api.SearchFacade;
+import com.dkostin.avro_viewer.app.service.api.*;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.ObservableList;

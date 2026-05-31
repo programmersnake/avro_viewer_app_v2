@@ -1,8 +1,8 @@
 package com.dkostin.avro_viewer.app.util;
 
 import com.dkostin.avro_viewer.app.config.FlatteningConfig;
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -34,18 +34,19 @@ public final class StructuralFlatteningEngine {
         if (!config.deepFlattening()) {
             // Isolate Objects Mode: Only root-level keys are columns.
             if (node.isObject()) {
-                node.fields().forEachRemaining(entry -> {
+                for (Map.Entry<String, JsonNode> entry : node.properties()) {
                     String key = entry.getKey();
                     JsonNode val = entry.getValue();
                     if (val.isNull()) {
                         putWithCollision(flatRow, key, "");
                     } else if (val.isValueNode()) {
-                        putWithCollision(flatRow, key, val.asText());
+                        String text = val.isBigDecimal() ? val.decimalValue().stripTrailingZeros().toPlainString() : val.asText();
+                        putWithCollision(flatRow, key, text);
                     } else {
                         // Serialize nested complex structure as JSON inline
                         putWithCollision(flatRow, key, val.toString());
                     }
-                });
+                }
             } else {
                 // Fallback for non-object root
                 putWithCollision(flatRow, "value", node.toString());
@@ -70,10 +71,10 @@ public final class StructuralFlatteningEngine {
         }
 
         if (node.isObject()) {
-            node.fields().forEachRemaining(entry -> {
+            for (Map.Entry<String, JsonNode> entry : node.properties()) {
                 String nextPath = currentPath.isEmpty() ? entry.getKey() : currentPath + "." + entry.getKey();
                 flattenDeep(nextPath, entry.getValue(), flatRow, indexBasedSuffixing);
-            });
+            }
         } else if (node.isArray()) {
             if (indexBasedSuffixing) {
                 for (int i = 0; i < node.size(); i++) {
@@ -85,7 +86,8 @@ public final class StructuralFlatteningEngine {
                 putWithCollision(flatRow, currentPath, node.toString());
             }
         } else if (node.isValueNode()) {
-            putWithCollision(flatRow, currentPath, node.asText());
+            String text = node.isBigDecimal() ? node.decimalValue().stripTrailingZeros().toPlainString() : node.asText();
+            putWithCollision(flatRow, currentPath, text);
         }
     }
 

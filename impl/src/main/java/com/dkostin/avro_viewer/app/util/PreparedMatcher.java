@@ -1,6 +1,7 @@
 package com.dkostin.avro_viewer.app.util;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
+
 import java.math.BigDecimal;
 
 public final class PreparedMatcher {
