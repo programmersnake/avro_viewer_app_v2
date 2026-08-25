@@ -32,6 +32,11 @@ public final class DeepSearchEngine {
             return matcher.matches(null);
         }
 
+        // Size-based operations: test the collection itself, don't recurse into elements
+        if (matcher.isSizeOperation()) {
+            return matcher.matches(node);
+        }
+
         Schema unwrappedSchema = unwrapUnion(schema);
 
         // Handle Logical Decimal wrapped in ByteBuffer, Fixed, or byte[]

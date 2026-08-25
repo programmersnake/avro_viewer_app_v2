@@ -39,13 +39,13 @@
     </top>
 
     <center>
-        <VBox spacing="12">
+        <SplitPane orientation="VERTICAL" dividerPositions="0.3">
             <padding>
                 <Insets top="14" right="14" bottom="14" left="14"/>
             </padding>
 
             <!-- Filters card -->
-            <VBox spacing="12" styleClass="card">
+            <VBox spacing="12" styleClass="card" SplitPane.resizableWithParent="true">
                 <padding>
                     <Insets top="14" right="14" bottom="14" left="14"/>
                 </padding>
@@ -77,8 +77,6 @@
                 <!-- Filters list (dynamic rows will be added here) -->
                 <ScrollPane fitToWidth="true" pannable="true"
                             vbarPolicy="AS_NEEDED" hbarPolicy="NEVER"
-                            prefViewportHeight="100"
-                            maxHeight="280"
                             styleClass="filters-scroll">
                     <content>
                         <VBox fx:id="filtersBox" spacing="10" styleClass="filters-list"/>
@@ -109,6 +107,6 @@
                 </HBox>
             </VBox>
 
-        </VBox>
+        </SplitPane>
     </center>
 </BorderPane>

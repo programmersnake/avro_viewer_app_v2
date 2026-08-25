@@ -328,4 +328,141 @@ class FilterPredicateFactoryTest {
         Predicate<GenericRecord> compiledNullNestedIsNull = factory.compile(List.of(nullNestedIsNullQuery));
         assertTrue(compiledNullNestedIsNull.test(record));
     }
+
+    @Test
+    void testSizeEqualsOnList() {
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("items"),
+                MatchOperation.SIZE_EQUALS,
+                "2"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+
+        FilterCriterion mismatch = new FilterCriterion(
+                FilterOption.ofField("items"),
+                MatchOperation.SIZE_EQUALS,
+                "1"
+        );
+        assertFalse(factory.compile(List.of(mismatch)).test(record));
+    }
+
+    @Test
+    void testSizeGreaterThanOnList() {
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("items"),
+                MatchOperation.SIZE_GREATER_THAN,
+                "1"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+
+        FilterCriterion mismatch = new FilterCriterion(
+                FilterOption.ofField("items"),
+                MatchOperation.SIZE_GREATER_THAN,
+                "2"
+        );
+        assertFalse(factory.compile(List.of(mismatch)).test(record));
+    }
+
+    @Test
+    void testSizeLessThanOnList() {
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("items"),
+                MatchOperation.SIZE_LESS_THAN,
+                "3"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+
+        FilterCriterion mismatch = new FilterCriterion(
+                FilterOption.ofField("items"),
+                MatchOperation.SIZE_LESS_THAN,
+                "2"
+        );
+        assertFalse(factory.compile(List.of(mismatch)).test(record));
+    }
+
+    @Test
+    void testSizeEqualsOnNestedMap() {
+        // dataMap has 1 entry
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("subContainer.nestedContainer.dataMap"),
+                MatchOperation.SIZE_EQUALS,
+                "1"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+    }
+
+    @Test
+    void testSizeEqualsOnScalarFieldReturnsFalse() {
+        // id is a String, not a collection
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("id"),
+                MatchOperation.SIZE_EQUALS,
+                "1"
+        );
+        assertFalse(factory.compile(List.of(criterion)).test(record));
+    }
+
+    @Test
+    void testInOperationWithMultipleValues() {
+        // region is "43" — test IN with matching set
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("region"),
+                MatchOperation.IN,
+                "43, 55, 78"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+
+        // Test with non-matching set
+        FilterCriterion mismatch = new FilterCriterion(
+                FilterOption.ofField("region"),
+                MatchOperation.IN,
+                "10, 20, 30"
+        );
+        assertFalse(factory.compile(List.of(mismatch)).test(record));
+    }
+
+    @Test
+    void testInOperationWithSingleValue() {
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("category"),
+                MatchOperation.IN,
+                "1300"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+    }
+
+    @Test
+    void testInOperationWithEscapedComma() {
+        // Test that \, is treated as a literal comma in the value
+        // Set id to a value containing a comma for this test
+        record.put("id", "hello,world");
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("id"),
+                MatchOperation.IN,
+                "hello\\,world, other"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+    }
+
+    @Test
+    void testInOperationWithWildcard() {
+        // Wildcard + IN should search deeply
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ALL_FIELDS,
+                MatchOperation.IN,
+                "43, 1300"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+    }
+
+    @Test
+    void testInOperationWithNumericComparison() {
+        // category is "1300" (String), but test numeric matching
+        FilterCriterion criterion = new FilterCriterion(
+                FilterOption.ofField("category"),
+                MatchOperation.IN,
+                "1300, 2100"
+        );
+        assertTrue(factory.compile(List.of(criterion)).test(record));
+    }
 }
