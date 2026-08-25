@@ -38,6 +38,14 @@ public enum MatchOperation {
             return normalize(actual).endsWith(normalize(expected));
         }
     },
+    IN("in") {
+        @Override
+        public boolean matches(Object actual, Object expected) {
+            // Multi-value matching is handled by PreparedMatcher.
+            // This fallback does simple equality for direct calls.
+            return normalize(actual).equals(normalize(expected));
+        }
+    },
     IS_NULL("is null") {
         @Override
         public boolean matches(Object actual, Object expected) {
@@ -48,6 +56,27 @@ public enum MatchOperation {
         @Override
         public boolean matches(Object actual, Object expected) {
             return actual != null;
+        }
+    },
+    SIZE_EQUALS("size equals") {
+        @Override
+        public boolean matches(Object actual, Object expected) {
+            int size = collectionSize(actual);
+            return size >= 0 && size == parseIntSafe(normalize(expected));
+        }
+    },
+    SIZE_GREATER_THAN("size >") {
+        @Override
+        public boolean matches(Object actual, Object expected) {
+            int size = collectionSize(actual);
+            return size >= 0 && size > parseIntSafe(normalize(expected));
+        }
+    },
+    SIZE_LESS_THAN("size <") {
+        @Override
+        public boolean matches(Object actual, Object expected) {
+            int size = collectionSize(actual);
+            return size >= 0 && size < parseIntSafe(normalize(expected));
         }
     };
 
@@ -85,6 +114,18 @@ public enum MatchOperation {
         if (n instanceof Double d) return BigDecimal.valueOf(d);
         if (n instanceof Float f) return BigDecimal.valueOf(f.doubleValue());
         return new BigDecimal(n.toString());
+    }
+
+    private static int collectionSize(Object val) {
+        if (val instanceof java.util.Collection<?> c) return c.size();
+        if (val instanceof java.util.Map<?,?> m) return m.size();
+        if (val == null) return 0;
+        return -1;
+    }
+
+    private static int parseIntSafe(String s) {
+        try { return Integer.parseInt(s.trim()); }
+        catch (NumberFormatException e) { return -1; }
     }
 }
 

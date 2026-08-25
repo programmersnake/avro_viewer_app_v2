@@ -99,6 +99,12 @@ public class FiltersUi {
             valueField.setDisable(noValueNeeded);
             if (noValueNeeded) {
                 valueField.clear();
+            } else if (newOp == MatchOperation.IN) {
+                valueField.setPromptText("e.g. 2100, 2300 (use \\, for literal comma)");
+            } else if (newOp == MatchOperation.SIZE_EQUALS || newOp == MatchOperation.SIZE_GREATER_THAN || newOp == MatchOperation.SIZE_LESS_THAN) {
+                valueField.setPromptText("e.g. 1, 5, 10");
+            } else {
+                valueField.setPromptText("Value (use 'null')");
             }
         });
 
@@ -164,6 +170,10 @@ public class FiltersUi {
             String value = model.getValue();
             // Skip if field or operator is not specified
             if (field == null || op == null) continue;
+            
+            // Size operations not supported with wildcard
+            if ((op == MatchOperation.SIZE_EQUALS || op == MatchOperation.SIZE_GREATER_THAN || op == MatchOperation.SIZE_LESS_THAN) && field.wildcard()) continue;
+
             // If the operator does not require a value (IS_NULL, NOT_NULL)
             if (op == MatchOperation.IS_NULL || op == MatchOperation.NOT_NULL) {
                 criteria.add(new FilterCriterion(field, op, null));

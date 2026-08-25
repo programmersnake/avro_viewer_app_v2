@@ -428,3 +428,15 @@
 .tree-cell:selected .tree-disclosure-node .arrow {
     -fx-background-color: -c-text;
 }
+
+/* ---------- SplitPane ---------- */
+
+.split-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 14;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: transparent;
+    -fx-padding: 6 0 6 0;
+}
