@@ -1,6 +1,6 @@
 package com.dkostin.avro_viewer.app.domain.state;
 
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.avro.Schema;
@@ -23,7 +23,7 @@ public final class ViewerState {
     private boolean hasNext;
 
     private ViewMode mode = ViewMode.BROWSE;
-    private List<FilterCriterion> criteria = List.of();
+    private List<FilterGroup> groups = List.of();
     private int maxResults = 500;
 
     public void openFile(Path file) {
@@ -56,15 +56,15 @@ public final class ViewerState {
         }
     }
 
-    public void setSearch(List<FilterCriterion> criteria, int maxResults) {
-        this.criteria = List.copyOf(criteria);
+    public void setSearch(List<FilterGroup> groups, int maxResults) {
+        this.groups = List.copyOf(groups);
         this.maxResults = maxResults;
         this.mode = ViewMode.SEARCH;
         resetToFirstPage();
     }
 
     public void clearSearch() {
-        this.criteria = List.of();
+        this.groups = List.of();
         this.maxResults = 500;
         this.mode = ViewMode.BROWSE;
         resetToFirstPage();

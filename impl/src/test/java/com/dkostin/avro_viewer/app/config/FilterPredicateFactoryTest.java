@@ -1,6 +1,8 @@
 package com.dkostin.avro_viewer.app.config;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
+
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import org.apache.avro.LogicalTypes;
@@ -164,7 +166,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "9206c8cc-bd06-4cbd-8d44-d56dad47e898"
         );
-        Predicate<GenericRecord> compiled = factory.compile(List.of(criterion));
+        Predicate<GenericRecord> compiled = factory.compile(List.of(new FilterGroup(List.of(criterion))));
         assertTrue(compiled.test(record));
 
         FilterCriterion mismatch = new FilterCriterion(
@@ -172,7 +174,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "other-id"
         );
-        compiled = factory.compile(List.of(mismatch));
+        compiled = factory.compile(List.of(new FilterGroup(List.of(mismatch))));
         assertFalse(compiled.test(record));
     }
 
@@ -183,7 +185,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.CONTAINS,
                 "DE000A2AACC6"
         );
-        Predicate<GenericRecord> compiled = factory.compile(List.of(criterion));
+        Predicate<GenericRecord> compiled = factory.compile(List.of(new FilterGroup(List.of(criterion))));
         assertTrue(compiled.test(record));
     }
 
@@ -195,7 +197,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.47432068758609836"
         );
-        Predicate<GenericRecord> compiled = factory.compile(List.of(criterion));
+        Predicate<GenericRecord> compiled = factory.compile(List.of(new FilterGroup(List.of(criterion))));
         assertTrue(compiled.test(record));
 
         // Query nested metricB
@@ -204,7 +206,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.47808718268324696"
         );
-        compiled = factory.compile(List.of(criterion2));
+        compiled = factory.compile(List.of(new FilterGroup(List.of(criterion2))));
         assertTrue(compiled.test(record));
 
         // Mismatch check
@@ -213,7 +215,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.999"
         );
-        compiled = factory.compile(List.of(mismatch));
+        compiled = factory.compile(List.of(new FilterGroup(List.of(mismatch))));
         assertFalse(compiled.test(record));
     }
 
@@ -225,7 +227,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.0035"
         );
-        Predicate<GenericRecord> compiled = factory.compile(List.of(criterion));
+        Predicate<GenericRecord> compiled = factory.compile(List.of(new FilterGroup(List.of(criterion))));
         assertTrue(compiled.test(record));
 
         // Test with 1st item (index 0)
@@ -234,7 +236,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "-0.0791"
         );
-        compiled = factory.compile(List.of(criterionIndex0));
+        compiled = factory.compile(List.of(new FilterGroup(List.of(criterionIndex0))));
         assertTrue(compiled.test(record));
 
         // Index out of bounds should not match and return false safely
@@ -243,7 +245,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.0035"
         );
-        compiled = factory.compile(List.of(mismatchIndex));
+        compiled = factory.compile(List.of(new FilterGroup(List.of(mismatchIndex))));
         assertFalse(compiled.test(record));
     }
 
@@ -255,7 +257,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.CONTAINS,
                 "itemY"
         );
-        Predicate<GenericRecord> compiled = factory.compile(List.of(criterion));
+        Predicate<GenericRecord> compiled = factory.compile(List.of(new FilterGroup(List.of(criterion))));
         assertTrue(compiled.test(record));
 
         FilterCriterion mismatch = new FilterCriterion(
@@ -263,7 +265,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.CONTAINS,
                 "itemZ"
         );
-        compiled = factory.compile(List.of(mismatch));
+        compiled = factory.compile(List.of(new FilterGroup(List.of(mismatch))));
         assertFalse(compiled.test(record));
     }
 
@@ -275,7 +277,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.474320687"
         );
-        Predicate<GenericRecord> compiled = factory.compile(List.of(criterion));
+        Predicate<GenericRecord> compiled = factory.compile(List.of(new FilterGroup(List.of(criterion))));
         assertTrue(compiled.test(record));
 
         // Test wildcard matching logical decimal
@@ -284,7 +286,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.474320687"
         );
-        Predicate<GenericRecord> compiledWildcard = factory.compile(List.of(wildcard));
+        Predicate<GenericRecord> compiledWildcard = factory.compile(List.of(new FilterGroup(List.of(wildcard))));
         assertTrue(compiledWildcard.test(record));
     }
 
@@ -296,7 +298,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.474320687"
         );
-        Predicate<GenericRecord> compiledNonExistent = factory.compile(List.of(criterionNonExistent));
+        Predicate<GenericRecord> compiledNonExistent = factory.compile(List.of(new FilterGroup(List.of(criterionNonExistent))));
         assertFalse(compiledNonExistent.test(record));
 
         // Test querying null values (IS_NULL/NOT_NULL ops) on a missing path
@@ -305,7 +307,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IS_NULL,
                 null
         );
-        Predicate<GenericRecord> compiledNull = factory.compile(List.of(isNullCriterion));
+        Predicate<GenericRecord> compiledNull = factory.compile(List.of(new FilterGroup(List.of(isNullCriterion))));
         assertTrue(compiledNull.test(record));
 
         // Test query on an existing field whose value is null (timestamp is long, let's add a nullable field)
@@ -317,7 +319,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.EQUALS,
                 "0.474320687"
         );
-        Predicate<GenericRecord> compiledNullNested = factory.compile(List.of(nullNestedQuery));
+        Predicate<GenericRecord> compiledNullNested = factory.compile(List.of(new FilterGroup(List.of(nullNestedQuery))));
         assertFalse(compiledNullNested.test(record));
 
         FilterCriterion nullNestedIsNullQuery = new FilterCriterion(
@@ -325,7 +327,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IS_NULL,
                 null
         );
-        Predicate<GenericRecord> compiledNullNestedIsNull = factory.compile(List.of(nullNestedIsNullQuery));
+        Predicate<GenericRecord> compiledNullNestedIsNull = factory.compile(List.of(new FilterGroup(List.of(nullNestedIsNullQuery))));
         assertTrue(compiledNullNestedIsNull.test(record));
     }
 
@@ -336,14 +338,14 @@ class FilterPredicateFactoryTest {
                 MatchOperation.SIZE_EQUALS,
                 "2"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
 
         FilterCriterion mismatch = new FilterCriterion(
                 FilterOption.ofField("items"),
                 MatchOperation.SIZE_EQUALS,
                 "1"
         );
-        assertFalse(factory.compile(List.of(mismatch)).test(record));
+        assertFalse(factory.compile(List.of(new FilterGroup(List.of(mismatch)))).test(record));
     }
 
     @Test
@@ -353,14 +355,14 @@ class FilterPredicateFactoryTest {
                 MatchOperation.SIZE_GREATER_THAN,
                 "1"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
 
         FilterCriterion mismatch = new FilterCriterion(
                 FilterOption.ofField("items"),
                 MatchOperation.SIZE_GREATER_THAN,
                 "2"
         );
-        assertFalse(factory.compile(List.of(mismatch)).test(record));
+        assertFalse(factory.compile(List.of(new FilterGroup(List.of(mismatch)))).test(record));
     }
 
     @Test
@@ -370,14 +372,14 @@ class FilterPredicateFactoryTest {
                 MatchOperation.SIZE_LESS_THAN,
                 "3"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
 
         FilterCriterion mismatch = new FilterCriterion(
                 FilterOption.ofField("items"),
                 MatchOperation.SIZE_LESS_THAN,
                 "2"
         );
-        assertFalse(factory.compile(List.of(mismatch)).test(record));
+        assertFalse(factory.compile(List.of(new FilterGroup(List.of(mismatch)))).test(record));
     }
 
     @Test
@@ -388,7 +390,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.SIZE_EQUALS,
                 "1"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
     }
 
     @Test
@@ -399,7 +401,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.SIZE_EQUALS,
                 "1"
         );
-        assertFalse(factory.compile(List.of(criterion)).test(record));
+        assertFalse(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
     }
 
     @Test
@@ -410,7 +412,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IN,
                 "43, 55, 78"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
 
         // Test with non-matching set
         FilterCriterion mismatch = new FilterCriterion(
@@ -418,7 +420,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IN,
                 "10, 20, 30"
         );
-        assertFalse(factory.compile(List.of(mismatch)).test(record));
+        assertFalse(factory.compile(List.of(new FilterGroup(List.of(mismatch)))).test(record));
     }
 
     @Test
@@ -428,7 +430,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IN,
                 "1300"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
     }
 
     @Test
@@ -441,7 +443,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IN,
                 "hello\\,world, other"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
     }
 
     @Test
@@ -452,7 +454,7 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IN,
                 "43, 1300"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
     }
 
     @Test
@@ -463,6 +465,67 @@ class FilterPredicateFactoryTest {
                 MatchOperation.IN,
                 "1300, 2100"
         );
-        assertTrue(factory.compile(List.of(criterion)).test(record));
+        assertTrue(factory.compile(List.of(new FilterGroup(List.of(criterion)))).test(record));
+    }
+
+    @Test
+    void testOrBetweenGroups() {
+        // Group 1: region = "43" (matches)
+        // Group 2: category = "9999" (doesn't match)
+        // OR -> should match because Group 1 matches
+        FilterGroup g1 = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("region"), MatchOperation.EQUALS, "43")
+        ));
+        FilterGroup g2 = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("category"), MatchOperation.EQUALS, "9999")
+        ));
+        assertTrue(factory.compile(List.of(g1, g2)).test(record));
+    }
+
+    @Test
+    void testOrBothGroupsFail() {
+        // Neither group matches
+        FilterGroup g1 = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("region"), MatchOperation.EQUALS, "999")
+        ));
+        FilterGroup g2 = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("category"), MatchOperation.EQUALS, "9999")
+        ));
+        assertFalse(factory.compile(List.of(g1, g2)).test(record));
+    }
+
+    @Test
+    void testAndWithinGroupBothMatch() {
+        // Both criteria in same group must match — and they do
+        FilterGroup g = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("region"), MatchOperation.EQUALS, "43"),
+            new FilterCriterion(FilterOption.ofField("category"), MatchOperation.EQUALS, "1300")
+        ));
+        assertTrue(factory.compile(List.of(g)).test(record));
+    }
+
+    @Test
+    void testAndWithinGroupPartialFail() {
+        // Both criteria in same group must match — one doesn't
+        FilterGroup g = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("region"), MatchOperation.EQUALS, "43"),
+            new FilterCriterion(FilterOption.ofField("category"), MatchOperation.EQUALS, "WRONG")
+        ));
+        assertFalse(factory.compile(List.of(g)).test(record));
+    }
+
+    @Test
+    void testMixedExpression() {
+        // (region=43 AND category=WRONG) OR (region=43 AND category=1300)
+        // First group fails (AND partial), second group matches
+        FilterGroup g1 = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("region"), MatchOperation.EQUALS, "43"),
+            new FilterCriterion(FilterOption.ofField("category"), MatchOperation.EQUALS, "WRONG")
+        ));
+        FilterGroup g2 = new FilterGroup(List.of(
+            new FilterCriterion(FilterOption.ofField("region"), MatchOperation.EQUALS, "43"),
+            new FilterCriterion(FilterOption.ofField("category"), MatchOperation.EQUALS, "1300")
+        ));
+        assertTrue(factory.compile(List.of(g1, g2)).test(record));
     }
 }

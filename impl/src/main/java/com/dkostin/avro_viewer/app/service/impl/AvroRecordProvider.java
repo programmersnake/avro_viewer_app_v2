@@ -1,7 +1,7 @@
 package com.dkostin.avro_viewer.app.service.impl;
 
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.service.api.RecordProvider;
 import com.dkostin.avro_viewer.app.util.AvroNormalizer;
 import com.dkostin.avro_viewer.app.util.JsonSerializer;
@@ -26,15 +26,15 @@ public class AvroRecordProvider implements RecordProvider {
     private GenericRecord nextRecord;
     private boolean isClosed = false;
 
-    public AvroRecordProvider(Path file, List<FilterCriterion> criteria, FilterPredicateFactory predicateFactory) throws IOException {
+    public AvroRecordProvider(Path file, List<FilterGroup> groups, FilterPredicateFactory predicateFactory) throws IOException {
         Objects.requireNonNull(file, "file cannot be null");
         SeekableFileInput input = new SeekableFileInput(file.toFile());
         try {
             this.reader = new DataFileReader<>(input, new GenericDatumReader<>());
             this.schema = this.reader.getSchema();
             
-            if (criteria != null && !criteria.isEmpty() && predicateFactory != null) {
-                this.predicate = predicateFactory.compile(criteria);
+            if (groups != null && !groups.isEmpty() && predicateFactory != null) {
+                this.predicate = predicateFactory.compile(groups);
             } else {
                 this.predicate = r -> true;
             }

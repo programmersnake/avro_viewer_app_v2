@@ -438,5 +438,29 @@
 
 .split-pane > .split-pane-divider {
     -fx-background-color: transparent;
-    -fx-padding: 6 0 6 0;
+    -fx-padding: 18 0 18 0;
+    -fx-cursor: v-resize;
+}
+
+.split-pane > .split-pane-divider:hover {
+    -fx-background-color: -c-border-strong;
+    -fx-background-insets: 12 40% 12 40%;
+    -fx-background-radius: 4;
+}
+/* ---------- Filter Groups ---------- */
+
+.filter-group {
+    -fx-background-color: -c-group-bg;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -c-border;
+    -fx-padding: 10;
+}
+
+.or-divider {
+    -fx-text-fill: -c-accent;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-alignment: center;
+    -fx-padding: 4 0 4 0;
 }

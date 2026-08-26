@@ -3,7 +3,7 @@ package com.dkostin.avro_viewer.app.service.impl;
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.domain.model.Page;
 import com.dkostin.avro_viewer.app.domain.model.SearchResult;
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.service.api.AvroFileService;
 import lombok.RequiredArgsConstructor;
 import org.apache.avro.Schema;
@@ -88,11 +88,11 @@ public class AvroFileServiceImpl implements AvroFileService {
     // -------------------- internals --------------------
 
     @Override
-    public SearchResult search(Path file, List<FilterCriterion> criteria, int maxResults) throws Exception {
+    public SearchResult search(Path file, List<FilterGroup> groups, int maxResults) throws Exception {
         if (file == null) throw new IllegalArgumentException("file is null");
         if (maxResults <= 0) throw new IllegalArgumentException("maxResults must be > 0");
 
-        var predicate = predicateFactory.compile(criteria);
+        var predicate = predicateFactory.compile(groups);
 
         List<Map<String, Object>> out = new ArrayList<>(Math.min(maxResults, 1024));
         long scanned = 0;

@@ -1,12 +1,14 @@
 package com.dkostin.avro_viewer.app.config;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.util.DeepSearchEngine;
 import com.dkostin.avro_viewer.app.util.PreparedMatcher;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -29,21 +31,37 @@ public final class FilterPredicateFactory {
      *       enabling deep search into nested records, arrays, and maps.</li>
      * </ul>
      */
-    public Predicate<GenericRecord> compile(List<FilterCriterion> criteria) {
-        if (criteria == null || criteria.isEmpty()) {
+    public Predicate<GenericRecord> compile(List<FilterGroup> groups) {
+        if (groups == null || groups.isEmpty()) {
             return _ -> true;
         }
 
-        List<Predicate<GenericRecord>> preds = new java.util.ArrayList<>();
-        for (FilterCriterion c : criteria) {
-            preds.add(toPredicate(c));
+        List<Predicate<GenericRecord>> groupPredicates = new ArrayList<>();
+        for (FilterGroup group : groups) {
+            if (group.isEmpty()) continue;
+
+            List<Predicate<GenericRecord>> preds = new ArrayList<>();
+            for (FilterCriterion c : group.criteria()) {
+                preds.add(toPredicate(c));
+            }
+
+            groupPredicates.add(rec -> {
+                for (var p : preds) {
+                    if (!p.test(rec)) return false;
+                }
+                return true;
+            });
         }
 
+        if (groupPredicates.isEmpty()) return _ -> true;
+        if (groupPredicates.size() == 1) return groupPredicates.getFirst();
+
+        // OR between groups
         return rec -> {
-            for (var p : preds) {
-                if (!p.test(rec)) return false;
+            for (var gp : groupPredicates) {
+                if (gp.test(rec)) return true;
             }
-            return true;
+            return false;
         };
     }
 

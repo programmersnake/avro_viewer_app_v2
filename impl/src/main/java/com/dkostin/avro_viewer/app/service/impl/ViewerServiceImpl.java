@@ -4,7 +4,7 @@ import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.config.FlatteningConfig;
 import com.dkostin.avro_viewer.app.domain.model.Page;
 import com.dkostin.avro_viewer.app.domain.model.SearchResult;
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.domain.state.ViewerState;
 import com.dkostin.avro_viewer.app.service.api.*;
 import javafx.beans.property.IntegerProperty;
@@ -161,17 +161,17 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
     /**
      * Starts a search (filtering) with the specified criteria.
      *
-     * @param criteria   list of filtering criteria
+     * @param groups   list of filtering criteria groups
      * @param maxResults maximum number of results
      * @return SearchResult – search result (found records, schema, counters, etc.)
      * @throws Exception if an error occurred during the search
      */
     @Override
-    public SearchResult search(List<FilterCriterion> criteria, int maxResults) throws Exception {
-        state.setSearch(criteria, maxResults);            // switch state to SEARCH mode (pageIndex=0)
+    public SearchResult search(List<FilterGroup> groups, int maxResults) throws Exception {
+        state.setSearch(groups, maxResults);            // switch state to SEARCH mode (pageIndex=0)
         maxResultsProperty.set(maxResults);               // synchronize the property with the new value
         // Search the file using AvroFileService
-        return fileService.search(state.getFile(), criteria, maxResults);
+        return fileService.search(state.getFile(), groups, maxResults);
     }
 
     /**
@@ -212,7 +212,7 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
         List<String> samples = new ArrayList<>();
         try (RecordProvider provider = new AvroRecordProvider(
                 state.getFile(),
-                state.isSearchMode() ? List.copyOf(state.getCriteria()) : List.of(),
+                state.isSearchMode() ? List.copyOf(state.getGroups()) : List.of(),
                 predicateFactory)) {
             while (provider.hasNext() && samples.size() < count) {
                 samples.add(provider.nextJsonRecord());
@@ -227,12 +227,12 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
             throw new IllegalStateException("No file is currently open");
         }
         Path file = state.getFile();
-        List<FilterCriterion> criteria = List.copyOf(state.getCriteria());
+        List<FilterGroup> groups = List.copyOf(state.getGroups());
         boolean searchMode = state.isSearchMode();
 
         RecordProviderFactory factory = () -> new AvroRecordProvider(
                 file,
-                searchMode ? criteria : List.of(),
+                searchMode ? groups : List.of(),
                 predicateFactory
         );
 

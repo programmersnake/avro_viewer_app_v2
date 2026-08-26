@@ -53,7 +53,7 @@
                 <HBox alignment="CENTER_LEFT" spacing="12">
                     <Label text="Filters" styleClass="h1"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="All filters are combined with AND" styleClass="muted"/>
+                    <Label text="Filters in a group: AND · Between groups: OR" styleClass="muted"/>
                 </HBox>
 
                 <!-- Global controls row -->
@@ -84,7 +84,7 @@
                 </ScrollPane>
 
                 <HBox spacing="10" alignment="CENTER_LEFT">
-                    <Button text="+ Add filter" onAction="#onAddFilter" styleClass="btn"/>
+                    <Button text="+ Add OR group" onAction="#onAddGroup" styleClass="btn"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="resultsLabel" styleClass="muted"/>
                 </HBox>
