@@ -3,7 +3,7 @@ package com.dkostin.avro_viewer.app.ui.main;
 import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.domain.model.Page;
 import com.dkostin.avro_viewer.app.domain.model.SearchResult;
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.service.api.ExportFacade;
 import com.dkostin.avro_viewer.app.service.api.FileLoader;
 import com.dkostin.avro_viewer.app.service.api.PageNavigator;
@@ -238,8 +238,8 @@ public class MainController {
     }
 
     @FXML
-    private void onAddFilter(ActionEvent e) {
-        filtersUi.addFilterRow();
+    private void onAddGroup(ActionEvent e) {
+        filtersUi.addGroup();
     }
 
     @FXML
@@ -251,7 +251,7 @@ public class MainController {
 
         cancelActiveSearchIfRunning();
 
-        List<FilterCriterion> criteria = filtersUi.getFilterCriteria();
+        List<FilterGroup> groups = filtersUi.getFilterGroups();
         int max = safeMaxResults();
 
         // UX
@@ -261,7 +261,7 @@ public class MainController {
         Task<SearchResult> task = new Task<>() {
             @Override
             protected SearchResult call() throws Exception {
-                return searchFacade.search(criteria, max);
+                return searchFacade.search(groups, max);
             }
         };
 

@@ -2,6 +2,8 @@ package com.dkostin.avro_viewer.app.service.impl;
 
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
+
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import com.dkostin.avro_viewer.app.service.api.RecordProvider;
@@ -78,7 +80,7 @@ class AvroRecordProviderTest {
     @Test
     void testPredicateFiltering() throws IOException {
         FilterCriterion criterion = new FilterCriterion(FilterOption.ofField("name"), MatchOperation.EQUALS, "Bob");
-        try (RecordProvider provider = new AvroRecordProvider(tempAvroFile, List.of(criterion), predicateFactory)) {
+        try (RecordProvider provider = new AvroRecordProvider(tempAvroFile, List.of(new FilterGroup(List.of(criterion))), predicateFactory)) {
             assertTrue(provider.hasNext());
             String r = provider.nextJsonRecord();
             assertTrue(r.contains("\"id\":2") && r.contains("\"name\":\"Bob\""));

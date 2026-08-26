@@ -1,16 +1,21 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
+import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterRowModel;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 import org.apache.avro.Schema;
@@ -23,32 +28,59 @@ import java.util.List;
  */
 public class FiltersUi {
 
+    private static class FilterGroupState {
+        final List<FilterRowModel> models = new ArrayList<>();
+        final List<FilterRowView> views = new ArrayList<>();
+    }
+
     private final VBox filtersContainer;
     private final ObservableList<FilterOption> availableFields = FXCollections.observableArrayList();
-    private final List<FilterRowModel> filterModels = new ArrayList<>();
-    private final List<FilterRowView> filterViews = new ArrayList<>();
+    private final List<FilterGroupState> groups = new ArrayList<>();
 
     public FiltersUi(VBox filtersContainer) {
         this.filtersContainer = filtersContainer;
+        // Initialize with one group containing one empty row
+        FilterGroupState initialGroup = new FilterGroupState();
+        groups.add(initialGroup);
+        addFilterRow(initialGroup);
+        rebuildUI();
     }
 
-    /**
-     * Resets all filters: clears the list and adds one empty row
-     */
+    /** Creates a new OR group with one empty filter row and rebuilds the UI. */
+    public void addGroup() {
+        FilterGroupState group = new FilterGroupState();
+        groups.add(group);
+        addFilterRow(group);
+        rebuildUI();
+    }
+
+    /** Resets all filters: one group, one empty row. */
     public void clearFilters() {
-        filtersContainer.getChildren().clear();
-        filterModels.clear();
-        filterViews.clear();
-        addFilterRow();
+        groups.clear();
+        FilterGroupState group = new FilterGroupState();
+        groups.add(group);
+        addFilterRow(group);
+        rebuildUI();
     }
 
-    /**
-     * Adds a new filter row (field-condition-value) to the UI
-     */
-    public void addFilterRow() {
+    /** Collects filter groups from all groups, ignoring incomplete/empty criteria. */
+    public List<FilterGroup> getFilterGroups() {
+        List<FilterGroup> result = new ArrayList<>();
+        for (FilterGroupState group : groups) {
+            List<FilterCriterion> criteria = collectCriteria(group);
+            if (!criteria.isEmpty()) {
+                result.add(new FilterGroup(criteria));
+            }
+        }
+        return result;
+    }
+
+    /** Adds a filter row to a specific group (does NOT call rebuildUI — caller must do that or call it in batch). */
+    private void addFilterRow(FilterGroupState group) {
         // Create a default filter model
         FilterRowModel model = new FilterRowModel();
-        filterModels.add(model);
+        group.models.add(model);
+        
         // Create controls for the field, operator, and value
         ComboBox<FilterOption> fieldCombo = new ComboBox<>(availableFields);
         fieldCombo.setPromptText("Field");
@@ -113,58 +145,102 @@ public class FiltersUi {
                 new HBox(10, fieldCombo, opCombo, valueField, removeBtn),
                 fieldCombo, opCombo, valueField, removeBtn, model
         );
-        filterViews.add(view);
-        filtersContainer.getChildren().add(view.root());
+        group.views.add(view);
 
         // Handler for the delete row button
-        removeBtn.setOnAction(_ -> removeFilterRow(view));
+        removeBtn.setOnAction(_ -> removeFilterRow(group, view));
     }
 
-    /**
-     * Internal method for removing a filter string
-     */
-    private void removeFilterRow(FilterRowView view) {
-        filtersContainer.getChildren().remove(view.root());
-        filterModels.remove(view.model());
-        filterViews.remove(view);
-        // If all lines are removed – add an empty line so that the interface does not remain empty
-        if (filterViews.isEmpty()) {
-            addFilterRow();
+    /** Removes a filter row from a group. If the group becomes empty, removes the group. If last group is removed, resets. */
+    private void removeFilterRow(FilterGroupState group, FilterRowView view) {
+        group.views.remove(view);
+        group.models.remove(view.model());
+        
+        if (group.views.isEmpty()) {
+            // Remove the entire group (UX decision: Q3=A)
+            groups.remove(group);
+            if (groups.isEmpty()) {
+                // Last group removed — reset to 1 group with 1 empty row
+                clearFilters();
+                return;
+            }
         }
+        rebuildUI();
     }
 
-    /**
-     * Updates the list of available fields in all Comboboxes based on the new Avro schema
-     */
-    public void updateFieldOptions(Schema schema) {
-        List<FilterOption> options = new ArrayList<>();
-        options.add(FilterOption.ALL_FIELDS); // wildcard always first
-        if (schema != null) {
-            schema.getFields().stream()
-                    .map(f -> FilterOption.ofField(f.name()))
-                    .forEach(options::add);
-        }
-        availableFields.setAll(options);
-
-        // For each filter row, check if the selected field is still available
-        for (FilterRowView view : filterViews) {
-            FilterOption selected = view.model().getField();
-            if (selected != null && !selected.wildcard() && !selected.fieldName().contains(".")) {
-                if (!availableFields.contains(selected)) {
-                    // If the previously selected field is missing in the new schema – reset
-                    view.fieldCombo().setValue(null);
-                    view.model().setField(null);
+    /** Rebuilds the entire filtersContainer based on current groups state. */
+    private void rebuildUI() {
+        filtersContainer.getChildren().clear();
+        
+        if (groups.size() == 1) {
+            // FLAT MODE: no group border, rows directly in container (UX decision: Q4=B)
+            FilterGroupState group = groups.get(0);
+            for (FilterRowView view : group.views) {
+                filtersContainer.getChildren().add(view.root());
+            }
+            // "+ Add filter" button at the bottom
+            Button addBtn = new Button("+ Add filter");
+            addBtn.getStyleClass().add("btn");
+            addBtn.setOnAction(_ -> { addFilterRow(group); rebuildUI(); });
+            filtersContainer.getChildren().add(addBtn);
+        } else {
+            // GROUPED MODE: bordered containers with OR dividers
+            for (int i = 0; i < groups.size(); i++) {
+                if (i > 0) {
+                    filtersContainer.getChildren().add(createOrDivider());
                 }
+                filtersContainer.getChildren().add(buildGroupContainer(groups.get(i)));
             }
         }
     }
 
-    /**
-     * Collects filter criteria from all rows, ignoring incomplete/empty ones
-     */
-    public List<FilterCriterion> getFilterCriteria() {
+    /** Creates a bordered group container with its filter rows, "+ Add filter" button, and "✕ Remove group" button. */
+    private VBox buildGroupContainer(FilterGroupState group) {
+        VBox rowsBox = new VBox(10);
+        for (FilterRowView view : group.views) {
+            rowsBox.getChildren().add(view.root());
+        }
+        
+        // Bottom toolbar: "+ Add filter" on left, "✕ Remove group" on right
+        Button addBtn = new Button("+ Add filter");
+        addBtn.getStyleClass().add("btn");
+        addBtn.setOnAction(_ -> { addFilterRow(group); rebuildUI(); });
+        
+        Button removeGroupBtn = new Button("✕ Remove group");
+        removeGroupBtn.getStyleClass().addAll("btn", "btn-danger");
+        removeGroupBtn.setOnAction(_ -> {
+            groups.remove(group);
+            if (groups.isEmpty()) {
+                clearFilters();
+                return;
+            }
+            rebuildUI();
+        });
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox toolbar = new HBox(10, addBtn, spacer, removeGroupBtn);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        
+        VBox container = new VBox(10, rowsBox, toolbar);
+        container.getStyleClass().add("filter-group");
+        container.setPadding(new Insets(10));
+        return container;
+    }
+
+    /** Creates the "── OR ──" divider label. */
+    private Label createOrDivider() {
+        Label divider = new Label("── OR ──");
+        divider.getStyleClass().add("or-divider");
+        divider.setMaxWidth(Double.MAX_VALUE);
+        divider.setAlignment(Pos.CENTER);
+        return divider;
+    }
+
+    /** Collects valid FilterCriterion from a group (same logic as old getFilterCriteria). */
+    private List<FilterCriterion> collectCriteria(FilterGroupState group) {
         List<FilterCriterion> criteria = new ArrayList<>();
-        for (FilterRowModel model : filterModels) {
+        for (FilterRowModel model : group.models) {
             FilterOption field = model.getField();
             MatchOperation op = model.getOp();
             String value = model.getValue();
@@ -188,6 +264,34 @@ public class FiltersUi {
         return criteria;
     }
 
+    /**
+     * Updates the list of available fields in all Comboboxes based on the new Avro schema
+     */
+    public void updateFieldOptions(Schema schema) {
+        List<FilterOption> options = new ArrayList<>();
+        options.add(FilterOption.ALL_FIELDS); // wildcard always first
+        if (schema != null) {
+            schema.getFields().stream()
+                    .map(f -> FilterOption.ofField(f.name()))
+                    .forEach(options::add);
+        }
+        availableFields.setAll(options);
+
+        // Check all groups
+        for (FilterGroupState group : groups) {
+            for (FilterRowView view : group.views) {
+                FilterOption selected = view.model().getField();
+                if (selected != null && !selected.wildcard() && !selected.fieldName().contains(".")) {
+                    if (!availableFields.contains(selected)) {
+                        // If the previously selected field is missing in the new schema – reset
+                        view.fieldCombo().setValue(null);
+                        view.model().setField(null);
+                    }
+                }
+            }
+        }
+    }
+
     public record FilterRowView(
             HBox root,
             ComboBox<FilterOption> fieldCombo,
@@ -198,5 +302,3 @@ public class FiltersUi {
     ) {
     }
 }
-
-

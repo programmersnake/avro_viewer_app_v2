@@ -440,3 +440,20 @@
     -fx-background-color: transparent;
     -fx-padding: 6 0 6 0;
 }
+/* ---------- Filter Groups ---------- */
+
+.filter-group {
+    -fx-background-color: -c-group-bg;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -c-border;
+    -fx-padding: 10;
+}
+
+.or-divider {
+    -fx-text-fill: -c-accent;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-alignment: center;
+    -fx-padding: 4 0 4 0;
+}
