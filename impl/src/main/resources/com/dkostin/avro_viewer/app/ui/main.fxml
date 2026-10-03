@@ -39,7 +39,7 @@
     </top>
 
     <center>
-        <SplitPane orientation="VERTICAL" dividerPositions="0.3">
+        <SplitPane fx:id="mainSplitPane" orientation="VERTICAL" dividerPositions="0.3">
             <padding>
                 <Insets top="14" right="14" bottom="14" left="14"/>
             </padding>
