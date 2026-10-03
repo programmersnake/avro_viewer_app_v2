@@ -1,219 +1,231 @@
 package com.dkostin.avro_viewer.app.service.impl;
 
+import com.dkostin.avro_viewer.app.config.FilterPathValidator;
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.config.FlatteningConfig;
+import com.dkostin.avro_viewer.app.domain.model.ExportScope;
+import com.dkostin.avro_viewer.app.domain.model.ExportSnapshot;
 import com.dkostin.avro_viewer.app.domain.model.Page;
+import com.dkostin.avro_viewer.app.domain.model.SearchRequest;
 import com.dkostin.avro_viewer.app.domain.model.SearchResult;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.domain.state.ViewerState;
 import com.dkostin.avro_viewer.app.service.api.*;
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.collections.ObservableList;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Service (Use-Case) for manipulation of state of viewing and handling AvroFileService
+ * Service orchestrating viewer state and coordinating Avro reading and exporting.
+ * Uses atomic transitions on immutable ViewerState, committed only after operations succeed.
  */
 public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacade, ExportFacade {
+
     private final AvroFileService fileService;
     private final ExportService exportService;
-    private final ViewerState state;
     private final FilterPredicateFactory predicateFactory;
-    // Property for maxResults, handled and joined to UI text label
-    private final IntegerProperty maxResultsProperty;
+    private final AtomicReference<ViewerState> state;
 
-    public ViewerServiceImpl(AvroFileService fileService, ExportService exportService, ViewerState state, FilterPredicateFactory predicateFactory) {
-        this.fileService = fileService;
-        this.exportService = exportService;
-        this.state = state;
-        this.predicateFactory = predicateFactory;
-        this.maxResultsProperty = new SimpleIntegerProperty(state.getMaxResults());
+    public ViewerServiceImpl(AvroFileService fileService, ExportService exportService, FilterPredicateFactory predicateFactory) {
+        this(fileService, exportService, ViewerState.initial(), predicateFactory);
     }
 
-    /**
-     * Property for two-way binding to the maxResults text field
-     */
-    @Override
-    public IntegerProperty maxResultsProperty() {
-        return maxResultsProperty;
+    public ViewerServiceImpl(AvroFileService fileService, ExportService exportService, ViewerState initialState, FilterPredicateFactory predicateFactory) {
+        this.fileService = Objects.requireNonNull(fileService, "fileService");
+        this.exportService = Objects.requireNonNull(exportService, "exportService");
+        this.predicateFactory = Objects.requireNonNull(predicateFactory, "predicateFactory");
+        this.state = new AtomicReference<>(initialState != null ? initialState : ViewerState.initial());
     }
 
-    /**
-     * Checking if a file is open
-     */
+    // ---------------- FileLoader ----------------
+
     @Override
     public boolean isFileOpen() {
-        return state.getFile() != null;
+        return state.get().isFileOpen();
     }
 
-    /**
-     * Is search (filtering) mode activated?
-     */
     @Override
-    public boolean isSearchMode() {
-        return state.isSearchMode();
+    public Path getCurrentFile() {
+        return state.get().file();
     }
 
-    /**
-     * Is there a next page when browsing by page?
-     */
+    @Override
+    public Page openFile(Path filePath) throws Exception {
+        ViewerState s = state.get();
+        Page firstPage = fileService.readPage(filePath, 0, s.pageSize());
+        state.updateAndGet(curr -> curr.browsing(filePath, 0, curr.pageSize(), firstPage));
+        return firstPage;
+    }
+
+    @Override
+    public Page reloadFile() throws Exception {
+        ViewerState s = state.get();
+        if (!s.isFileOpen()) {
+            throw new IllegalStateException("No file is currently open");
+        }
+        fileService.invalidate();
+        Page firstPage = fileService.readPage(s.file(), 0, s.pageSize());
+        state.updateAndGet(curr -> curr.browsing(curr.file(), 0, curr.pageSize(), firstPage));
+        return firstPage;
+    }
+
+    // ---------------- PageNavigator ----------------
+
     @Override
     public boolean hasNextPage() {
-        return state.isHasNext();
+        return state.get().hasNext();
     }
 
-    /**
-     * Current page index (0-based)
-     */
     @Override
     public int getPageIndex() {
-        return state.getPageIndex();
+        return state.get().pageIndex();
     }
 
     @Override
     public int getPageSize() {
-        return state.getPageSize();
+        return state.get().pageSize();
     }
 
     @Override
     public void setPageSize(int pageSize) {
-        state.setPageSize(pageSize);
+        state.updateAndGet(curr -> curr.withPageSize(pageSize));
     }
 
-    /**
-     * Opens an Avro file and loads the first page of data.
-     *
-     * @return Page – a page object (first records of the file, page size state.pageSize).
-     * @throws Exception if an error occurred while reading the file
-     */
-    @Override
-    public Page openFile(Path filePath) throws Exception {
-        Path prevFile = state.getFile();
-        try {
-            state.openFile(filePath);
-
-            Page firstPage = fileService.readPage(state.getFile(), state.getPageIndex(), state.getPageSize());
-
-            state.setSchema(firstPage.schema());
-            state.setHasNext(firstPage.hasNext());
-            return firstPage;
-        } catch (Exception ex) {
-            // In case of failure – return the old state of the file
-            state.openFile(prevFile);
-            throw ex;
-        }
-    }
-
-    /**
-     * Goes to the next page (for pagination in view mode).
-     *
-     * @return Page – the page object after the jump.
-     * @throws Exception if the page read failed
-     */
     @Override
     public Page nextPage() throws Exception {
-        if (!state.isHasNext()) {
-            // If there is no next page, we stay where we are
+        ViewerState s = state.get();
+        if (!s.isFileOpen() || s.isSearchMode() || !s.hasNext()) {
             return null;
         }
-        state.nextPage();
-        Page page = fileService.readPage(state.getFile(), state.getPageIndex(), state.getPageSize());
-        state.setHasNext(page.hasNext());
+        int target = s.pageIndex() + 1;
+        Page page = fileService.readPage(s.file(), target, s.pageSize());
+        state.updateAndGet(curr -> {
+            if (!Objects.equals(curr.file(), s.file()) || curr.isSearchMode()) {
+                return curr;
+            }
+            return curr.browsing(curr.file(), target, curr.pageSize(), page);
+        });
         return page;
     }
 
-    /**
-     * Goes to the previous page (pagination)
-     */
     @Override
     public Page prevPage() throws Exception {
-        if (state.getPageIndex() == 0) {
+        ViewerState s = state.get();
+        if (!s.isFileOpen() || s.isSearchMode() || s.pageIndex() == 0) {
             return null;
         }
-        state.prevPage();
-        Page page = fileService.readPage(state.getFile(), state.getPageIndex(), state.getPageSize());
-        state.setHasNext(page.hasNext());
+        int target = s.pageIndex() - 1;
+        Page page = fileService.readPage(s.file(), target, s.pageSize());
+        state.updateAndGet(curr -> {
+            if (!Objects.equals(curr.file(), s.file()) || curr.isSearchMode()) {
+                return curr;
+            }
+            return curr.browsing(curr.file(), target, curr.pageSize(), page);
+        });
         return page;
     }
 
-    /**
-     * Changes the page size (number of records) and reloads the first page.
-     *
-     * @return Page – new first page after resizing.
-     * @throws Exception if read failed
-     */
     @Override
     public Page changePageSize(int newPageSize) throws Exception {
-        state.setPageSize(newPageSize); // sets mode = BROWSE and pageIndex=0
-        // After changing the page size – load the new first page
-        Page page = fileService.readPage(state.getFile(), state.getPageIndex(), state.getPageSize());
-        state.setSchema(page.schema());
-        state.setHasNext(page.hasNext());
+        ViewerState s = state.get();
+        if (!s.isFileOpen()) {
+            state.updateAndGet(curr -> curr.withPageSize(newPageSize));
+            return null;
+        }
+        Page page = fileService.readPage(s.file(), 0, newPageSize);
+        state.updateAndGet(curr -> curr.browsing(curr.file(), 0, newPageSize, page));
         return page;
     }
 
-    /**
-     * Starts a search (filtering) with the specified criteria.
-     *
-     * @param groups   list of filtering criteria groups
-     * @param maxResults maximum number of results
-     * @return SearchResult – search result (found records, schema, counters, etc.)
-     * @throws Exception if an error occurred during the search
-     */
+    // ---------------- SearchFacade ----------------
+
     @Override
-    public SearchResult search(List<FilterGroup> groups, int maxResults) throws Exception {
-        state.setSearch(groups, maxResults);            // switch state to SEARCH mode (pageIndex=0)
-        maxResultsProperty.set(maxResults);               // synchronize the property with the new value
-        // Search the file using AvroFileService
-        return fileService.search(state.getFile(), groups, maxResults);
+    public boolean isSearchMode() {
+        return state.get().isSearchMode();
     }
 
-    /**
-     * Resets search mode (returns to paginated view) and loads the first page.
-     *
-     * @return Page – the first page in browse mode after resetting filters.
-     * @throws Exception if page reading failed
-     */
+    @Override
+    public int getMaxResults() {
+        return state.get().maxResults();
+    }
+
+    @Override
+    public int getDefaultMaxResults() {
+        return ViewerState.DEFAULT_MAX_RESULTS;
+    }
+
+    @Override
+    public SearchRequest prepareSearch(List<FilterGroup> groups, int maxResults) {
+        ViewerState s = state.get();
+        if (!s.isFileOpen()) {
+            throw new IllegalStateException("No file is currently open");
+        }
+        FilterPathValidator.validate(s.schema(), groups);
+        return new SearchRequest(s.file(), s.schema(), groups, maxResults);
+    }
+
+    @Override
+    public SearchResult executeSearch(SearchRequest request) throws Exception {
+        Objects.requireNonNull(request, "request cannot be null");
+        return fileService.search(request.file(), request.groups(), request.maxResults());
+    }
+
+    @Override
+    public boolean commitSearch(SearchRequest request, SearchResult result) {
+        Objects.requireNonNull(request, "request cannot be null");
+        Objects.requireNonNull(result, "result cannot be null");
+        while (true) {
+            ViewerState current = state.get();
+            if (!Objects.equals(current.file(), request.file())) {
+                // Stale search result: user opened another file while search was in-flight
+                return false;
+            }
+            ViewerState updated = current.searching(request.groups(), request.maxResults(), result.schema());
+            if (state.compareAndSet(current, updated)) {
+                return true;
+            }
+        }
+    }
+
     @Override
     public Page clearSearch() throws Exception {
-        state.clearSearch();  // resets criteria, maxResults=500, mode=BROWSE, pageIndex=0
-        maxResultsProperty.set(state.getMaxResults());  // reset the bound maxResults value to 500
-        // Return to the first page of the full file
-        if (state.getFile() != null) {
-            Page page = fileService.readPage(state.getFile(), 0, state.getPageSize());
-            state.setSchema(page.schema());
-            state.setHasNext(page.hasNext());
-            return page;
+        ViewerState s = state.get();
+        if (!s.isFileOpen()) {
+            state.updateAndGet(curr -> curr.browsing(null, 0, curr.pageSize(), null));
+            return null;
         }
-        return null;
+        Page page = fileService.readPage(s.file(), 0, s.pageSize());
+        state.updateAndGet(curr -> curr.browsing(curr.file(), 0, curr.pageSize(), page));
+        return page;
     }
 
+    // ---------------- ExportFacade ----------------
+
     @Override
-    public void exportToJson(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
+    public void exportToJson(Path out, List<Map<String, Object>> rows) throws IOException {
         exportService.exportTableToJson(out, rows);
     }
 
     @Override
-    public void exportToCsv(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
-        exportService.exportTableToCsv(out, rows);
+    public ExportSnapshot captureExportSnapshot(List<Map<String, Object>> currentRows) {
+        ViewerState s = state.get();
+        if (!s.isFileOpen()) {
+            throw new IllegalStateException("No file is currently open");
+        }
+        return new ExportSnapshot(s.file(), s.groups(), s.isSearchMode(), s.pageIndex(), currentRows);
     }
 
     @Override
-    public List<String> getSampleRecords(int count) throws IOException {
-        if (state.getFile() == null) {
-            throw new IllegalStateException("No file is currently open");
-        }
-        List<String> samples = new ArrayList<>();
-        try (RecordProvider provider = new AvroRecordProvider(
-                state.getFile(),
-                state.isSearchMode() ? List.copyOf(state.getGroups()) : List.of(),
-                predicateFactory)) {
+    public List<String> getSampleRecords(ExportSnapshot snapshot, ExportScope scope, int count) throws IOException {
+        Objects.requireNonNull(snapshot, "snapshot cannot be null");
+        RecordProviderFactory factory = createRecordProviderFactory(snapshot, scope);
+        List<String> samples = new ArrayList<>(count);
+        try (RecordProvider provider = factory.create()) {
             while (provider.hasNext() && samples.size() < count) {
                 samples.add(provider.nextJsonRecord());
             }
@@ -222,20 +234,23 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
     }
 
     @Override
-    public void exportToCsvStreaming(Path out, FlatteningConfig config, char delimiter, ExportService.ProgressListener listener) throws IOException {
-        if (state.getFile() == null) {
-            throw new IllegalStateException("No file is currently open");
+    public long exportToCsvStreaming(Path out, ExportSnapshot snapshot, ExportScope scope,
+                                     FlatteningConfig config, char delimiter,
+                                     ExportService.ProgressListener listener) throws IOException {
+        Objects.requireNonNull(snapshot, "snapshot cannot be null");
+        RecordProviderFactory factory = createRecordProviderFactory(snapshot, scope);
+        return exportService.exportToCsvStreaming(out, factory, config, delimiter, listener);
+    }
+
+    private RecordProviderFactory createRecordProviderFactory(ExportSnapshot snapshot, ExportScope scope) {
+        if (scope == ExportScope.CURRENT_VIEW) {
+            return () -> new RowListRecordProvider(snapshot.currentRows());
+        } else {
+            return () -> new AvroRecordProvider(
+                    snapshot.file(),
+                    snapshot.searchMode() ? snapshot.groups() : List.of(),
+                    predicateFactory
+            );
         }
-        Path file = state.getFile();
-        List<FilterGroup> groups = List.copyOf(state.getGroups());
-        boolean searchMode = state.isSearchMode();
-
-        RecordProviderFactory factory = () -> new AvroRecordProvider(
-                file,
-                searchMode ? groups : List.of(),
-                predicateFactory
-        );
-
-        exportService.exportToCsvStreaming(out, factory, config, delimiter, listener);
     }
 }

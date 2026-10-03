@@ -25,7 +25,7 @@ public final class AvroNormalizer {
     public static Object normalize(Object value, Schema schema) {
         if (value == null) return null;
 
-        Schema actualSchema = unwrapUnion(schema);
+        Schema actualSchema = AvroUnions.resolveBranch(schema, value);
 
         // GenericRecord
         if (value instanceof GenericRecord rec) {
@@ -41,9 +41,7 @@ public final class AvroNormalizer {
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> out = new LinkedHashMap<>();
             Schema valSchema = actualSchema != null && actualSchema.getType() == Schema.Type.MAP ? actualSchema.getValueType() : null;
-            map.forEach((k, v) -> {
-                out.put(String.valueOf(k), normalize(v, valSchema));
-            });
+            map.forEach((k, v) -> out.put(String.valueOf(k), normalize(v, valSchema)));
             return out;
         }
 
@@ -105,12 +103,4 @@ public final class AvroNormalizer {
         return value;
     }
 
-    private static Schema unwrapUnion(Schema schema) {
-        if (schema != null && schema.getType() == Schema.Type.UNION) {
-            for (Schema s : schema.getTypes()) {
-                if (s.getType() != Schema.Type.NULL) return s;
-            }
-        }
-        return schema;
-    }
 }

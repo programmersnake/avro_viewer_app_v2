@@ -1,6 +1,8 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
 import com.dkostin.avro_viewer.app.config.FlatteningConfig;
+import com.dkostin.avro_viewer.app.domain.model.ExportScope;
+import com.dkostin.avro_viewer.app.domain.model.ExportSnapshot;
 import com.dkostin.avro_viewer.app.service.api.ExportFacade;
 import com.dkostin.avro_viewer.app.util.StructuralFlatteningEngine;
 import javafx.application.Platform;
@@ -30,8 +32,9 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Premium CSV Export Preview and Configuration Dialog.
- * Provides a responsive TableView preview of flattened data and real-time settings toggles.
+ * CSV Export Preview and Configuration Dialog.
+ * Provides a responsive TableView preview of flattened data, export scope selection,
+ * and real-time settings toggles.
  */
 public class ExportPreviewDialog {
 
@@ -56,6 +59,10 @@ public class ExportPreviewDialog {
     private Stage stage;
 
     // --- UI Controls ---
+    private RadioButton currentViewRadio;
+    private RadioButton allMatchingRadio;
+    private Label scopeNoteLabel;
+
     private RadioButton isolateRadio;
     private RadioButton deepRadio;
     private RadioButton serializeRadio;
@@ -72,6 +79,7 @@ public class ExportPreviewDialog {
     private final BooleanProperty globalDisable = new SimpleBooleanProperty(false);
 
     // --- State ---
+    private ExportSnapshot currentSnapshot;
     private List<String> rawSampleRecords;
     private Task<FlattenResult> activePreviewTask;
     private Task<Void> activeExportTask;
@@ -81,14 +89,15 @@ public class ExportPreviewDialog {
     }
 
     /**
-     * Shows the CSV Export Preview and Configuration dialog.
-     * <p>
-     * On every invocation, it resets any active progress/tasks and reloads 10 sample records
-     * from the current browse or search filters state.
+     * Shows the CSV Export Preview and Configuration dialog with the captured export snapshot.
+     * Resets scope to CURRENT_VIEW and loads preview samples.
      *
-     * @param ownerScene The parent application Scene to inherit styling stylesheets from.
+     * @param ownerScene The parent application Scene to inherit stylesheets from.
+     * @param snapshot   Immutable snapshot of the view/filter context.
      */
-    public void show(Scene ownerScene) {
+    public void show(Scene ownerScene, ExportSnapshot snapshot) {
+        this.currentSnapshot = Objects.requireNonNull(snapshot, "snapshot cannot be null");
+
         if (stage == null) {
             initStage(ownerScene);
         }
@@ -96,18 +105,44 @@ public class ExportPreviewDialog {
         // Inherit themes from main app window
         stage.getScene().getStylesheets().setAll(ownerScene.getStylesheets());
 
-        // Cancel any lingering tasks and reload samples from the current search context
+        // Cancel any lingering tasks
         if (activePreviewTask != null && activePreviewTask.isRunning()) {
             activePreviewTask.cancel(true);
         }
         if (activeExportTask != null && activeExportTask.isRunning()) {
             activeExportTask.cancel(true);
         }
-        
+
+        currentViewRadio.setSelected(true);
+        updateScopeLabels();
         loadSamples();
 
         stage.show();
         stage.toFront();
+    }
+
+    private void updateScopeLabels() {
+        if (currentSnapshot == null) return;
+        int rowCount = currentSnapshot.currentRows().size();
+        if (currentSnapshot.searchMode()) {
+            currentViewRadio.setText("Current view — search results (" + rowCount + " rows)");
+            allMatchingRadio.setText("All records matching filters");
+            scopeNoteLabel.setText("Note: 'All records matching filters' scans the source file and may include more than the visible search results.");
+            scopeNoteLabel.setVisible(true);
+            scopeNoteLabel.setManaged(true);
+        } else {
+            currentViewRadio.setText("Current view — " + currentSnapshot.viewDescription() + " (" + rowCount + " rows)");
+            allMatchingRadio.setText("All records in file");
+            scopeNoteLabel.setText("");
+            scopeNoteLabel.setVisible(false);
+            scopeNoteLabel.setManaged(false);
+        }
+    }
+
+    private ExportScope currentScope() {
+        return allMatchingRadio != null && allMatchingRadio.isSelected()
+                ? ExportScope.ALL_MATCHING
+                : ExportScope.CURRENT_VIEW;
     }
 
     private void initStage(Scene ownerScene) {
@@ -138,7 +173,7 @@ public class ExportPreviewDialog {
         stage.setScene(scene);
 
         // Stop tasks on stage hide
-        stage.setOnHidden(e -> {
+        stage.setOnHidden(_ -> {
             if (activePreviewTask != null && activePreviewTask.isRunning()) {
                 activePreviewTask.cancel(true);
             }
@@ -158,6 +193,31 @@ public class ExportPreviewDialog {
         title.getStyleClass().add("h1");
         panel.getChildren().add(title);
 
+        // Scope Card
+        VBox scopeCard = new VBox(8);
+        scopeCard.getStyleClass().add("card");
+        Label scopeTitle = new Label("EXPORT SCOPE");
+        scopeTitle.getStyleClass().add("muted");
+        scopeTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+
+        ToggleGroup scopeGroup = new ToggleGroup();
+        currentViewRadio = new RadioButton("Current view");
+        currentViewRadio.setToggleGroup(scopeGroup);
+        currentViewRadio.setSelected(true);
+        currentViewRadio.setOnAction(_ -> loadSamples());
+
+        allMatchingRadio = new RadioButton("All matching records");
+        allMatchingRadio.setToggleGroup(scopeGroup);
+        allMatchingRadio.setOnAction(_ -> loadSamples());
+
+        scopeNoteLabel = new Label();
+        scopeNoteLabel.getStyleClass().add("muted");
+        scopeNoteLabel.setStyle("-fx-font-size: 10px;");
+        scopeNoteLabel.setWrapText(true);
+
+        scopeCard.getChildren().addAll(scopeTitle, currentViewRadio, allMatchingRadio, scopeNoteLabel);
+        panel.getChildren().add(scopeCard);
+
         // Mode Card
         VBox modeCard = new VBox(8);
         modeCard.getStyleClass().add("card");
@@ -169,12 +229,12 @@ public class ExportPreviewDialog {
         isolateRadio = new RadioButton("Isolate Objects (Safe)");
         isolateRadio.setToggleGroup(modeGroup);
         isolateRadio.setTooltip(new Tooltip("Leaves nested complex structures as JSON strings inside cells."));
-        isolateRadio.setOnAction(e -> triggerPreviewGeneration());
+        isolateRadio.setOnAction(_ -> triggerPreviewGeneration());
 
         deepRadio = new RadioButton("Deep Flattening (Unpack)");
         deepRadio.setToggleGroup(modeGroup);
         deepRadio.setTooltip(new Tooltip("Unpacks hierarchical structures recursively using dot separation."));
-        deepRadio.setOnAction(e -> triggerPreviewGeneration());
+        deepRadio.setOnAction(_ -> triggerPreviewGeneration());
         deepRadio.setSelected(true); // Default
 
         modeCard.getChildren().addAll(modeTitle, isolateRadio, deepRadio);
@@ -191,12 +251,12 @@ public class ExportPreviewDialog {
         serializeRadio = new RadioButton("Serialize to JSON");
         serializeRadio.setToggleGroup(arrayGroup);
         serializeRadio.setTooltip(new Tooltip("Inline arrays are written as nested JSON blocks."));
-        serializeRadio.setOnAction(e -> triggerPreviewGeneration());
+        serializeRadio.setOnAction(_ -> triggerPreviewGeneration());
 
         suffixRadio = new RadioButton("Index-Based Suffixing");
         suffixRadio.setToggleGroup(arrayGroup);
         suffixRadio.setTooltip(new Tooltip("Unpacks arrays into distinct columns: key.0, key.1"));
-        suffixRadio.setOnAction(e -> triggerPreviewGeneration());
+        suffixRadio.setOnAction(_ -> triggerPreviewGeneration());
         suffixRadio.setSelected(true); // Default
 
         arrayCard.getChildren().addAll(arrayTitle, serializeRadio, suffixRadio);
@@ -214,7 +274,7 @@ public class ExportPreviewDialog {
         delimiterCombo.setValue("Comma (,)");
         delimiterCombo.setPrefWidth(Double.MAX_VALUE);
         delimiterCombo.setTooltip(new Tooltip("Delimiter applies only to the output CSV file structure."));
-        delimiterCombo.setOnAction(e -> triggerPreviewGeneration());
+        delimiterCombo.setOnAction(_ -> triggerPreviewGeneration());
 
         Label delimNote = new Label("Applies to final CSV file.");
         delimNote.getStyleClass().add("muted");
@@ -254,7 +314,7 @@ public class ExportPreviewDialog {
     private HBox createBottomBar() {
         HBox bar = new HBox(12);
         bar.setPadding(new Insets(10, 14, 10, 14));
-        bar.getStyleClass().add("topbar"); // reuse topbar border line
+        bar.getStyleClass().add("topbar");
         bar.setAlignment(Pos.CENTER_LEFT);
 
         statusLabel = new Label("Ready");
@@ -273,18 +333,20 @@ public class ExportPreviewDialog {
 
         exportBtn = new Button("Export CSV...");
         exportBtn.getStyleClass().add("btn-primary");
-        exportBtn.setOnAction(e -> handleExport());
+        exportBtn.setOnAction(_ -> handleExport());
 
         cancelBtn = new Button("Close");
         cancelBtn.getStyleClass().add("btn");
-        cancelBtn.setOnAction(e -> handleCancel());
+        cancelBtn.setOnAction(_ -> handleCancel());
 
         bar.getChildren().addAll(statusLabel, exportProgressBox, exportBtn, cancelBtn);
         return bar;
     }
 
     private void bindControlProperties() {
-        // Combined bindings to avoid re-binding issues and JavaFX warnings
+        currentViewRadio.disableProperty().bind(globalDisable);
+        allMatchingRadio.disableProperty().bind(globalDisable);
+
         BooleanBinding arraysDisableBinding = isolateRadio.selectedProperty().or(globalDisable);
 
         serializeRadio.disableProperty().bind(arraysDisableBinding);
@@ -297,20 +359,24 @@ public class ExportPreviewDialog {
     }
 
     private void loadSamples() {
+        if (currentSnapshot == null) return;
+
         setControlsDisabled(true);
         previewTable.getColumns().clear();
         previewTable.getItems().clear();
         previewTable.setPlaceholder(new Label("Loading sample records..."));
         statusLabel.setText("Loading sample records...");
 
+        final ExportScope scope = currentScope();
+
         Task<List<String>> task = new Task<>() {
             @Override
             protected List<String> call() throws Exception {
-                return exportFacade.getSampleRecords(10);
+                return exportFacade.getSampleRecords(currentSnapshot, scope, 10);
             }
         };
 
-        task.setOnSucceeded(e -> {
+        task.setOnSucceeded(_ -> {
             rawSampleRecords = task.getValue();
             if (rawSampleRecords == null || rawSampleRecords.isEmpty()) {
                 previewTable.setPlaceholder(new Label("No records to preview"));
@@ -321,7 +387,7 @@ public class ExportPreviewDialog {
             }
         });
 
-        task.setOnFailed(e -> {
+        task.setOnFailed(_ -> {
             Throwable err = task.getException();
             ErrorAlert.showError("Failed to load sample records", err);
             previewTable.setPlaceholder(new Label("Failed to load records"));
@@ -350,7 +416,7 @@ public class ExportPreviewDialog {
 
         Task<FlattenResult> task = new Task<>() {
             @Override
-            protected FlattenResult call() throws Exception {
+            protected FlattenResult call() {
                 ObjectMapper mapper = JsonMapper.builder()
                         .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
                         .build();
@@ -373,7 +439,7 @@ public class ExportPreviewDialog {
 
         activePreviewTask = task;
 
-        task.setOnSucceeded(e -> {
+        task.setOnSucceeded(_ -> {
             if (activePreviewTask != task) return;
 
             FlattenResult result = task.getValue();
@@ -381,7 +447,7 @@ public class ExportPreviewDialog {
             statusLabel.setText("Preview ready");
         });
 
-        task.setOnFailed(e -> {
+        task.setOnFailed(_ -> {
             if (activePreviewTask != task) return;
             Throwable err = task.getException();
             ErrorAlert.showError("Failed to generate preview", err);
@@ -413,7 +479,7 @@ public class ExportPreviewDialog {
     private void autoFitColumns() {
         for (TableColumn<Map<String, String>, ?> col : previewTable.getColumns()) {
             String colHeader = col.getText();
-            double maxW = colHeader.length() * HEADER_CHAR_WIDTH + HEADER_PADDING_OFFSET; // header length + padding
+            double maxW = colHeader.length() * HEADER_CHAR_WIDTH + HEADER_PADDING_OFFSET;
 
             for (Map<String, String> item : previewTable.getItems()) {
                 Object cellVal = col.getCellData(item);
@@ -430,10 +496,14 @@ public class ExportPreviewDialog {
     }
 
     private void handleExport() {
+        if (currentSnapshot == null) return;
+
+        final ExportScope scope = currentScope();
+
         FileChooser fc = new FileChooser();
         fc.setTitle("Save CSV Export");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV files (*.csv)", "*.csv"));
-        fc.setInitialFileName("export-preview.csv");
+        fc.setInitialFileName("export-" + currentSnapshot.fileNameSuffix(scope) + ".csv");
 
         File outFile = fc.showSaveDialog(stage);
         if (outFile == null) {
@@ -456,12 +526,15 @@ public class ExportPreviewDialog {
         statusLabel.setText("Initializing export...");
 
         AtomicLong lastProgressUpdate = new AtomicLong(0L);
+        AtomicLong recordsWritten = new AtomicLong(0L);
 
         Task<Void> exportTask = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                exportFacade.exportToCsvStreaming(
+                long count = exportFacade.exportToCsvStreaming(
                         outFile.toPath(),
+                        currentSnapshot,
+                        scope,
                         config,
                         finalDelim,
                         (pass, current, total) -> {
@@ -480,7 +553,7 @@ public class ExportPreviewDialog {
                             } else if (pass == 2) {
                                 if (now - lastProgressUpdate.get() >= PROGRESS_THROTTLE_MS || current == total) {
                                     lastProgressUpdate.set(now);
-                                    double progress = (double) current / total;
+                                    double progress = total > 0 ? (double) current / total : ProgressIndicator.INDETERMINATE_PROGRESS;
                                     Platform.runLater(() -> {
                                         statusLabel.setText("Writing records (" + current + " / " + total + ")...");
                                         exportProgressBar.setProgress(progress);
@@ -489,27 +562,31 @@ public class ExportPreviewDialog {
                             }
                         }
                 );
+                recordsWritten.set(count);
                 return null;
             }
         };
 
         activeExportTask = exportTask;
 
-        exportTask.setOnSucceeded(e -> {
+        exportTask.setOnSucceeded(_ -> {
             exportProgressBox.setVisible(false);
             setControlsDisabled(false);
             cancelBtn.setText("Close");
-            statusLabel.setText("Exported successfully to: " + outFile.getName());
+
+            String msg = "Exported " + String.format("%,d", recordsWritten.get()) + " records ("
+                    + currentSnapshot.scopeDescription(scope) + ") to " + outFile.getName();
+            statusLabel.setText(msg);
 
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Export Success");
             alert.setHeaderText(null);
-            alert.setContentText("Data exported successfully to " + outFile.getName());
+            alert.setContentText(msg);
             alert.initOwner(stage);
             alert.showAndWait();
         });
 
-        exportTask.setOnFailed(e -> {
+        exportTask.setOnFailed(_ -> {
             exportProgressBox.setVisible(false);
             setControlsDisabled(false);
             cancelBtn.setText("Close");
@@ -518,7 +595,7 @@ public class ExportPreviewDialog {
             statusLabel.setText("Export failed");
         });
 
-        exportTask.setOnCancelled(e -> {
+        exportTask.setOnCancelled(_ -> {
             exportProgressBox.setVisible(false);
             setControlsDisabled(false);
             cancelBtn.setText("Close");

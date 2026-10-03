@@ -3,7 +3,6 @@ package com.dkostin.avro_viewer.app.service.impl;
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
-
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import com.dkostin.avro_viewer.app.service.api.RecordProvider;

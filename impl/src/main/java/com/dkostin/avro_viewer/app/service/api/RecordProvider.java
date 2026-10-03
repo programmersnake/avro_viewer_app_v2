@@ -1,12 +1,13 @@
 package com.dkostin.avro_viewer.app.service.api;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
  * Generic record iterator interface that decouples the flattening UI
  * and exporter from format-specific APIs (like Avro, Parquet, or Protobuf).
  */
-public interface RecordProvider extends java.io.Closeable {
+public interface RecordProvider extends Closeable {
     /**
      * @return true if there are more records to read, false otherwise.
      */

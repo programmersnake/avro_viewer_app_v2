@@ -2,6 +2,7 @@ package com.dkostin.avro_viewer.app.config;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
+import com.dkostin.avro_viewer.app.util.AvroUnions;
 import com.dkostin.avro_viewer.app.util.DeepSearchEngine;
 import com.dkostin.avro_viewer.app.util.PreparedMatcher;
 import org.apache.avro.Schema;
@@ -102,7 +103,7 @@ public final class FilterPredicateFactory {
             return new ResolvedNode(node, schema);
         }
         String segment = path[index];
-        Schema unwrappedSchema = unwrapUnion(schema);
+        Schema unwrappedSchema = AvroUnions.resolveBranch(schema, node);
 
         if (node instanceof IndexedRecord rec) {
             Schema recSchema = unwrappedSchema != null ? unwrappedSchema : rec.getSchema();
@@ -148,14 +149,6 @@ public final class FilterPredicateFactory {
         return new ResolvedNode(null, null);
     }
 
-    private static Schema unwrapUnion(Schema schema) {
-        if (schema != null && schema.getType() == Schema.Type.UNION) {
-            for (Schema s : schema.getTypes()) {
-                if (s.getType() != Schema.Type.NULL) return s;
-            }
-        }
-        return schema;
-    }
 }
 
 

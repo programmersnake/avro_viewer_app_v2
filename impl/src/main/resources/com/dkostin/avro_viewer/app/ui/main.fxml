@@ -17,13 +17,18 @@
             <MenuButton text="File" styleClass="btn">
                 <items>
                     <MenuItem text="Open .avro file..." onAction="#onOpenFile"/>
+                    <MenuItem fx:id="reloadMenuItem" text="Reload file" accelerator="F5" onAction="#onReloadFile"/>
                 </items>
             </MenuButton>
 
             <Region HBox.hgrow="ALWAYS"/>
 
-            <Button text="Export → JSON" onAction="#onExportJson" styleClass="btn"/>
-            <Button text="Export → CSV" onAction="#onExportCsv" styleClass="btn"/>
+            <Button text="Export view → JSON" onAction="#onExportJson" styleClass="btn">
+                <tooltip><Tooltip text="Exports the rows currently shown in the table (current page or displayed search results)"/></tooltip>
+            </Button>
+            <Button text="Export → CSV…" onAction="#onExportCsv" styleClass="btn">
+                <tooltip><Tooltip text="Choose scope: current view or all matching records"/></tooltip>
+            </Button>
 
             <!-- THEME SWITCH -->
             <HBox spacing="8" alignment="CENTER_LEFT">
