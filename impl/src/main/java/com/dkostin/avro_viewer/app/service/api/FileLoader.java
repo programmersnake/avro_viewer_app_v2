@@ -8,5 +8,9 @@ public interface FileLoader {
 
     Page openFile(Path filePath) throws Exception;
 
+    Page reloadFile() throws Exception;
+
     boolean isFileOpen();
+
+    Path getCurrentFile();
 }

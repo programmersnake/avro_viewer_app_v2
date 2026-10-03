@@ -9,7 +9,13 @@ import java.nio.file.Path;
 import java.util.List;
 
 public interface AvroFileService {
+
     Page readPage(Path file, int pageIndex, int pageSize) throws IOException;
 
     SearchResult search(Path file, List<FilterGroup> groups, int maxResults) throws Exception;
+
+    /**
+     * Clears cached pages and closes any active reader session.
+     */
+    void invalidate();
 }

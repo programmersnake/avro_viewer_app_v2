@@ -2,7 +2,6 @@ package com.dkostin.avro_viewer.app.config;
 
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
-
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
 import org.apache.avro.LogicalTypes;
@@ -527,5 +526,26 @@ class FilterPredicateFactoryTest {
             new FilterCriterion(FilterOption.ofField("category"), MatchOperation.EQUALS, "1300")
         ));
         assertTrue(factory.compile(List.of(g1, g2)).test(record));
+    }
+
+    @Test
+    void testMultiBranchUnionPath() {
+        Schema recA = SchemaBuilder.record("RecA").fields().requiredString("aField").endRecord();
+        Schema recB = SchemaBuilder.record("RecB").fields().requiredString("bField").endRecord();
+        Schema unionSchema = Schema.createUnion(Schema.create(Schema.Type.NULL), recA, recB);
+        Schema rootSchema = SchemaBuilder.record("Root").fields()
+                .name("poly").type(unionSchema).noDefault()
+                .endRecord();
+
+        GenericRecord b = new GenericData.Record(recB);
+        b.put("bField", "helloB");
+
+        GenericRecord root = new GenericData.Record(rootSchema);
+        root.put("poly", b);
+
+        FilterGroup g = new FilterGroup(List.of(
+                new FilterCriterion(FilterOption.ofField("poly.bField"), MatchOperation.EQUALS, "helloB")
+        ));
+        assertTrue(factory.compile(List.of(g)).test(root));
     }
 }

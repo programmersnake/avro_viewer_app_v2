@@ -67,4 +67,29 @@ class AvroNormalizerTest {
         assertInstanceOf(java.util.Collection.class, listOut);
         assertEquals(2, ((java.util.Collection<?>) listOut).size());
     }
+
+    @Test
+    void testNormalizeMultiBranchUnionRecord() {
+        Schema recA = SchemaBuilder.record("RecA").fields().requiredString("aField").endRecord();
+        Schema recB = SchemaBuilder.record("RecB").fields().requiredString("bField").endRecord();
+        Schema unionSchema = Schema.createUnion(Schema.create(Schema.Type.NULL), recA, recB);
+
+        Schema rootSchema = SchemaBuilder.record("Root").fields()
+                .name("poly").type(unionSchema).noDefault()
+                .endRecord();
+
+        GenericRecord b = new GenericData.Record(recB);
+        b.put("bField", "helloB");
+
+        GenericRecord root = new GenericData.Record(rootSchema);
+        root.put("poly", b);
+
+        Object normalized = AvroNormalizer.normalize(root, rootSchema);
+        assertInstanceOf(Map.class, normalized);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) normalized;
+        @SuppressWarnings("unchecked")
+        Map<String, Object> poly = (Map<String, Object>) map.get("poly");
+        assertEquals("helloB", poly.get("bField"));
+    }
 }

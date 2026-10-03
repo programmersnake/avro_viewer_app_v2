@@ -37,7 +37,7 @@ public final class DeepSearchEngine {
             return matcher.matches(node);
         }
 
-        Schema unwrappedSchema = unwrapUnion(schema);
+        Schema unwrappedSchema = AvroUnions.resolveBranch(schema, node);
 
         // Handle Logical Decimal wrapped in ByteBuffer, Fixed, or byte[]
         if (unwrappedSchema != null && unwrappedSchema.getLogicalType() instanceof org.apache.avro.LogicalTypes.Decimal dec) {
@@ -61,9 +61,8 @@ public final class DeepSearchEngine {
         if (node instanceof IndexedRecord rec) {
             Schema recSchema = unwrappedSchema != null ? unwrappedSchema : rec.getSchema();
             List<Schema.Field> fields = recSchema.getFields();
-            for (int i = 0; i < fields.size(); i++) {
-                Schema.Field f = fields.get(i);
-                if (matches(rec.get(f.pos()), f.schema(), matcher)) {
+            for (Schema.Field field : fields) {
+                if (matches(rec.get(field.pos()), field.schema(), matcher)) {
                     return true;
                 }
             }
@@ -105,14 +104,6 @@ public final class DeepSearchEngine {
         return matcher.matches(node);
     }
 
-    private static Schema unwrapUnion(Schema schema) {
-        if (schema != null && schema.getType() == Schema.Type.UNION) {
-            for (Schema s : schema.getTypes()) {
-                if (s.getType() != Schema.Type.NULL) return s;
-            }
-        }
-        return schema;
-    }
 }
 
 

@@ -6,7 +6,7 @@ import com.dkostin.avro_viewer.app.service.api.RecordProvider;
 import com.dkostin.avro_viewer.app.service.api.RecordProviderFactory;
 import com.dkostin.avro_viewer.app.util.JsonSerializer;
 import com.dkostin.avro_viewer.app.util.StructuralFlatteningEngine;
-import javafx.collections.ObservableList;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SequenceWriter;
@@ -16,64 +16,40 @@ import tools.jackson.dataformat.csv.CsvSchema;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.InterruptedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 
 public class ExportServiceImpl implements ExportService {
+
     @Override
-    public void exportTableToJson(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
-        // JSON array of objects
-        String json = JsonSerializer.toJsonSafe(rows);
-        Files.writeString(out, json, StandardCharsets.UTF_8);
+    public void exportTableToJson(Path out, List<Map<String, Object>> rows) throws IOException {
+        AtomicFileWriter.write(out, tmp -> {
+            String json = JsonSerializer.toJsonSafe(rows);
+            Files.writeString(tmp, json, StandardCharsets.UTF_8);
+        });
     }
 
     @Override
-    public void exportTableToCsv(Path out, ObservableList<Map<String, Object>> rows) throws IOException {
-        List<Map<String, Object>> flatRows = new ArrayList<>(rows.size());
-        LinkedHashSet<String> headerKeys = new LinkedHashSet<>();
+    public long exportToCsvStreaming(Path out, RecordProviderFactory providerFactory, FlatteningConfig config, char delimiter, ExportService.ProgressListener listener) throws IOException {
+        long[] recordsWritten = new long[1];
 
-        // Pass 1: Flatten & Collect Keys
-        for (Map<String, Object> row : rows) {
-            Map<String, Object> flatRow = new LinkedHashMap<>();
-            com.dkostin.avro_viewer.app.util.MapFlattener.flatten("", row, flatRow);
-            flatRows.add(flatRow);
-            headerKeys.addAll(flatRow.keySet());
-        }
-
-        // Pass 2: Write CSV
-        try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(out), StandardCharsets.UTF_8))) {
-            // Write headers
-            w.write(String.join(",", headerKeys.stream().map(this::csvEscape).toList()));
-            w.newLine();
-
-            // Write flattened rows
-            for (Map<String, Object> flatRow : flatRows) {
-                List<String> vals = new ArrayList<>(headerKeys.size());
-                for (String h : headerKeys) {
-                    Object v = flatRow.get(h);
-                    vals.add(csvEscape(v == null ? "" : String.valueOf(v)));
-                }
-                w.write(String.join(",", vals));
-                w.newLine();
-            }
-        }
-    }
-
-    @Override
-    public void exportToCsvStreaming(Path out, RecordProviderFactory providerFactory, FlatteningConfig config, char delimiter, ExportService.ProgressListener listener) throws IOException {
-        try {
+        AtomicFileWriter.write(out, tmp -> {
             LinkedHashSet<String> headerKeys = new LinkedHashSet<>();
-            ObjectMapper mapper = JsonMapper.builder().build();
+            ObjectMapper mapper = JsonMapper.builder()
+                    .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+                    .build();
 
             long count = 0;
             // Pass 1: Schema Construction (Streaming Scan)
             try (RecordProvider provider = providerFactory.create()) {
                 while (provider.hasNext()) {
                     if (Thread.currentThread().isInterrupted()) {
-                        throw new IOException("Export cancelled by user");
+                        throw new InterruptedIOException("Export cancelled by user");
                     }
                     String json = provider.nextJsonRecord();
                     JsonNode node = mapper.readTree(json);
@@ -87,11 +63,12 @@ public class ExportServiceImpl implements ExportService {
             }
 
             if (Thread.currentThread().isInterrupted()) {
-                throw new IOException("Export cancelled by user");
+                throw new InterruptedIOException("Export cancelled by user");
             }
 
             if (headerKeys.isEmpty()) {
-                Files.writeString(out, "", StandardCharsets.UTF_8);
+                Files.writeString(tmp, "", StandardCharsets.UTF_8);
+                recordsWritten[0] = 0;
                 return;
             }
 
@@ -107,12 +84,12 @@ public class ExportServiceImpl implements ExportService {
                     .withColumnSeparator(delimiter);
 
             long current = 0;
-            try (BufferedWriter w = Files.newBufferedWriter(out, StandardCharsets.UTF_8);
+            try (BufferedWriter w = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8);
                  SequenceWriter seqWriter = csvMapper.writer(csvSchema).writeValues(w)) {
                 try (RecordProvider provider = providerFactory.create()) {
                     while (provider.hasNext()) {
                         if (Thread.currentThread().isInterrupted()) {
-                            throw new IOException("Export cancelled by user");
+                            throw new InterruptedIOException("Export cancelled by user");
                         }
                         String json = provider.nextJsonRecord();
                         JsonNode node = mapper.readTree(json);
@@ -125,22 +102,14 @@ public class ExportServiceImpl implements ExportService {
                     }
                 }
             }
-        } catch (IOException | RuntimeException e) {
-            if (Thread.currentThread().isInterrupted()) {
-                try {
-                    Files.deleteIfExists(out);
-                } catch (IOException ignored) {}
-            }
-            throw e;
-        }
-    }
 
-    private String csvEscape(String s) {
-        // RFC-ish: escape quotes, wrap if contains comma/quote/newline
-        String escaped = s.replace("\"", "\"\"");
-        if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n") || escaped.contains("\r")) {
-            return "\"" + escaped + "\"";
-        }
-        return escaped;
+            if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedIOException("Export cancelled by user");
+            }
+
+            recordsWritten[0] = current;
+        });
+
+        return recordsWritten[0];
     }
 }

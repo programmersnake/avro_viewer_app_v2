@@ -1,6 +1,5 @@
 package com.dkostin.avro_viewer.app.config;
 
-import com.dkostin.avro_viewer.app.domain.state.ViewerState;
 import com.dkostin.avro_viewer.app.service.api.ExportFacade;
 import com.dkostin.avro_viewer.app.service.api.FileLoader;
 import com.dkostin.avro_viewer.app.service.api.PageNavigator;
@@ -12,19 +11,17 @@ import com.dkostin.avro_viewer.app.ui.component.RowViewWindow;
 
 public final class AppContext {
 
-    private final ViewerState viewerState;
     private final RowViewWindow rowViewWindow;
     private final ViewerServiceImpl viewerService;
 
     public AppContext() {
-        this.viewerState = new ViewerState();
         this.rowViewWindow = new RowViewWindow();
 
         var filterPredicateFactory = new FilterPredicateFactory();
         var avroFileService = new AvroFileServiceImpl(filterPredicateFactory);
         var exportService = new ExportServiceImpl();
 
-        this.viewerService = new ViewerServiceImpl(avroFileService, exportService, viewerState, filterPredicateFactory);
+        this.viewerService = new ViewerServiceImpl(avroFileService, exportService, filterPredicateFactory);
     }
 
     public RowViewWindow jsonWindow() {
@@ -47,4 +44,3 @@ public final class AppContext {
         return viewerService;
     }
 }
-

@@ -1,10 +1,6 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
-import com.dkostin.avro_viewer.app.domain.model.filter.FilterRowModel;
-import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
+import com.dkostin.avro_viewer.app.domain.model.filter.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -83,7 +79,7 @@ public class FiltersUi {
         
         // Create controls for the field, operator, and value
         ComboBox<FilterOption> fieldCombo = new ComboBox<>(availableFields);
-        fieldCombo.setPromptText("Field");
+        fieldCombo.setPromptText("Field (or a.b.c path)");
         fieldCombo.setPrefWidth(220);
         fieldCombo.setEditable(true);
         fieldCombo.setConverter(new StringConverter<>() {
@@ -174,7 +170,7 @@ public class FiltersUi {
         
         if (groups.size() == 1) {
             // FLAT MODE: no group border, rows directly in container (UX decision: Q4=B)
-            FilterGroupState group = groups.get(0);
+            FilterGroupState group = groups.getFirst();
             for (FilterRowView view : group.views) {
                 filtersContainer.getChildren().add(view.root());
             }

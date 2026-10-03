@@ -160,4 +160,17 @@ class DeepSearchEngineTest {
         // Non-numeric expected: falls back to string comparison
         assertFalse(MatchOperation.EQUALS.matches(42, "forty-two"));
     }
+
+    @Test
+    void matchesMultiBranchUnion() {
+        Schema recA = SchemaBuilder.record("RecA").fields().requiredString("aField").endRecord();
+        Schema recB = SchemaBuilder.record("RecB").fields().requiredString("bField").endRecord();
+        Schema unionSchema = Schema.createUnion(Schema.create(Schema.Type.NULL), recA, recB);
+
+        GenericRecord b = new GenericData.Record(recB);
+        b.put("bField", "helloB");
+
+        assertTrue(DeepSearchEngine.matches(b, unionSchema, new PreparedMatcher(MatchOperation.EQUALS, "helloB")));
+        assertFalse(DeepSearchEngine.matches(b, unionSchema, new PreparedMatcher(MatchOperation.EQUALS, "other")));
+    }
 }

@@ -1,8 +1,7 @@
 package com.dkostin.avro_viewer.app.ui.main;
 
 import com.dkostin.avro_viewer.app.config.AppContext;
-import com.dkostin.avro_viewer.app.domain.model.Page;
-import com.dkostin.avro_viewer.app.domain.model.SearchResult;
+import com.dkostin.avro_viewer.app.domain.model.*;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.service.api.ExportFacade;
 import com.dkostin.avro_viewer.app.service.api.FileLoader;
@@ -10,6 +9,8 @@ import com.dkostin.avro_viewer.app.service.api.PageNavigator;
 import com.dkostin.avro_viewer.app.service.api.SearchFacade;
 import com.dkostin.avro_viewer.app.ui.Theme;
 import com.dkostin.avro_viewer.app.ui.component.*;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -21,6 +22,8 @@ import javafx.util.converter.NumberStringConverter;
 import org.apache.avro.Schema;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -28,7 +31,7 @@ import java.util.Map;
  * MainController:
  * - UI orchestration only
  * - Filters UI delegating to FiltersUi
- * - Table setup delegating to TableViewPresenter
+ * - Table setup delegating to TableViewWindow
  * - Data/State operations delegating to segregated service interfaces
  */
 public class MainController {
@@ -47,6 +50,8 @@ public class MainController {
     private final RowViewWindow rowViewWindow;
 
     // ---- FXML ----
+    @FXML
+    private MenuItem reloadMenuItem;
     @FXML
     private TextField maxResultsField;
     @FXML
@@ -70,7 +75,9 @@ public class MainController {
     private FiltersUi filtersUi;
     private TableViewWindow tableViewWindow;
 
-    // ---- Runtime state ----
+    // ---- Controller-local UI state ----
+    private final IntegerProperty maxResultsProperty = new SimpleIntegerProperty();
+    private int lastSearchResultCount = -1;
     private Scene scene;
     private Task<?> activeSearchTask;
     private ExportPreviewDialog exportPreviewDialog;
@@ -123,7 +130,7 @@ public class MainController {
         pageLabel.setText("Page 1");
         statusLabel.setText("");
 
-        updatePagingButtons();
+        updateControls();
     }
 
     private void initPageSizeCombo() {
@@ -141,11 +148,7 @@ public class MainController {
     // ---------------------------
 
     private void bindMaxResultsField() {
-        // Set initial value (service/state should provide a sane default, e.g., 500)
-        int initial = searchFacade.maxResultsProperty().get();
-        if (initial <= 0) {
-            searchFacade.maxResultsProperty().set(500);
-        }
+        maxResultsProperty.set(searchFacade.getDefaultMaxResults());
 
         // Only digits in textfield + clamp to MAX_RESULTS_LIMIT
         maxResultsField.textProperty().addListener((_, _, newV) -> {
@@ -172,7 +175,7 @@ public class MainController {
 
         // Bidirectional binding (NumberStringConverter handles parse/format)
         maxResultsField.textProperty().bindBidirectional(
-                searchFacade.maxResultsProperty(),
+                maxResultsProperty,
                 new NumberStringConverter()
         );
     }
@@ -205,7 +208,7 @@ public class MainController {
     }
 
     // ---------------------------
-    // Filters
+    // Filters & Search
     // ---------------------------
 
     @FXML
@@ -228,6 +231,7 @@ public class MainController {
             tableViewWindow.updateTableData(page.records(), schema);
 
             // labels
+            lastSearchResultCount = -1;
             resultsLabel.setText("Active: (none)");
             pageLabel.setText("Page 1");
             statusLabel.setText("Opened: " + file.getName() + " (" + page.records().size() + " records)");
@@ -238,12 +242,33 @@ public class MainController {
     }
 
     @FXML
-    private void onAddGroup(ActionEvent e) {
+    private void onReloadFile() {
+        if (!fileLoader.isFileOpen()) return;
+
+        cancelActiveSearchIfRunning();
+
+        executeWithUiUpdate("Error reloading file", () -> {
+            Page page = fileLoader.reloadFile();
+            Schema schema = page.schema();
+            filtersUi.updateFieldOptions(schema);
+            tableViewWindow.updateTableData(page.records(), schema);
+
+            lastSearchResultCount = -1;
+            resultsLabel.setText("Active: (none)");
+            pageLabel.setText("Page 1");
+            Path current = fileLoader.getCurrentFile();
+            String name = current != null ? current.getFileName().toString() : "file";
+            statusLabel.setText("Reloaded: " + name + " (" + page.records().size() + " records)");
+        });
+    }
+
+    @FXML
+    private void onAddGroup(ActionEvent ignored) {
         filtersUi.addGroup();
     }
 
     @FXML
-    private void onApplyFilters(ActionEvent e) {
+    private void onApplyFilters(ActionEvent ignored) {
         if (!fileLoader.isFileOpen()) {
             statusLabel.setText("Open an .avro file first");
             return;
@@ -254,42 +279,65 @@ public class MainController {
         List<FilterGroup> groups = filtersUi.getFilterGroups();
         int max = safeMaxResults();
 
-        // UX
+        SearchRequest request;
+        try {
+            request = searchFacade.prepareSearch(groups, max);
+        } catch (InvalidFilterException ex) {
+            ErrorAlert.showError("Invalid filter criteria", ex);
+            statusLabel.setText("Unknown field(s): " + String.join(", ", ex.getInvalidPaths()));
+            return;
+        } catch (Exception ex) {
+            ErrorAlert.showError("Failed to prepare search", ex);
+            statusLabel.setText("Search preparation failed");
+            return;
+        }
+
+        // UX: in-progress indication
         statusLabel.setText("Searching...");
         resultsLabel.setText("Searching...");
 
         Task<SearchResult> task = new Task<>() {
             @Override
             protected SearchResult call() throws Exception {
-                return searchFacade.search(groups, max);
+                return searchFacade.executeSearch(request);
             }
         };
 
         activeSearchTask = task;
 
         task.setOnSucceeded(_ -> {
-            // prevent stale task updating UI after newer one started
             if (activeSearchTask != task) return;
 
             SearchResult result = task.getValue();
+            boolean committed = searchFacade.commitSearch(request, result);
+            if (!committed) {
+                // Stale task result (e.g. user opened a new file while search was running)
+                renderCommittedState();
+                return;
+            }
+
             tableViewWindow.updateSearchData(result.records(), result.schema());
 
+            lastSearchResultCount = result.records().size();
             String tail = result.truncated() ? " (stopped by maxResults)" : "";
             resultsLabel.setText("Results: " + result.records().size() + tail);
             statusLabel.setText("Scanned: " + result.scanned() + ", matched: " + result.records().size() + tail);
 
-            pageLabel.setText("Search"); // optional, makes mode obvious
-            updatePagingButtons();
+            pageLabel.setText("Search");
+            updateControls();
         });
 
-        task.setOnFailed(evt -> {
+        task.setOnFailed(_ -> {
             if (activeSearchTask != task) return;
 
             Throwable err = task.getException();
             ErrorAlert.showError("Search failed", err);
-            statusLabel.setText("Search failed");
-            resultsLabel.setText("Search failed");
-            updatePagingButtons();
+            renderCommittedState();
+        });
+
+        task.setOnCancelled(_ -> {
+            if (activeSearchTask != task) return;
+            renderCommittedState();
         });
 
         Thread t = new Thread(task, "avro-search");
@@ -297,21 +345,43 @@ public class MainController {
         t.start();
     }
 
+    private void renderCommittedState() {
+        if (!fileLoader.isFileOpen()) {
+            resultsLabel.setText("Active: (none)");
+            pageLabel.setText("Page 1");
+            statusLabel.setText("");
+        } else if (searchFacade.isSearchMode()) {
+            pageLabel.setText("Search");
+            resultsLabel.setText(lastSearchResultCount >= 0 ? "Results: " + lastSearchResultCount : "Search mode");
+            statusLabel.setText("Search mode active");
+        } else {
+            pageLabel.setText("Page " + (pageNavigator.getPageIndex() + 1));
+            resultsLabel.setText("Active: (none)");
+            Path current = fileLoader.getCurrentFile();
+            String name = current != null ? current.getFileName().toString() : "file";
+            int count = table.getItems() != null ? table.getItems().size() : 0;
+            statusLabel.setText("Loaded " + count + " records from " + name);
+        }
+        updateControls();
+    }
+
     // ---------------------------
     // Paging
     // ---------------------------
 
     @FXML
-    private void onClearFilters(ActionEvent e) {
+    private void onClearFilters(ActionEvent ignored) {
         cancelActiveSearchIfRunning();
 
         filtersUi.clearFilters();
+        lastSearchResultCount = -1;
         resultsLabel.setText("Active: (none)");
+        maxResultsProperty.set(searchFacade.getDefaultMaxResults());
 
         if (!fileLoader.isFileOpen()) {
             statusLabel.setText("");
             pageLabel.setText("Page 1");
-            updatePagingButtons();
+            updateControls();
             return;
         }
 
@@ -367,7 +437,6 @@ public class MainController {
 
     private void onPageSizeChanged() {
         if (!fileLoader.isFileOpen()) {
-            // still update service default for next open (optional)
             Integer ps = pageSizeCombo.getValue();
             if (ps != null) {
                 pageNavigator.setPageSize(ps);
@@ -400,14 +469,17 @@ public class MainController {
         FileChooser fc = new FileChooser();
         fc.setTitle("Export to JSON");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON (*.json)", "*.json"));
-        fc.setInitialFileName("export-" + exportNameSuffix() + ".json");
+        String suffix = searchFacade.isSearchMode() ? "search-results" : "page-" + (pageNavigator.getPageIndex() + 1);
+        fc.setInitialFileName("export-" + suffix + ".json");
 
         File out = fc.showSaveDialog(table.getScene().getWindow());
         if (out == null) return;
 
+        List<Map<String, Object>> rows = new ArrayList<>(table.getItems());
         executeWithUiUpdate("Export JSON failed", () -> {
-            exportFacade.exportToJson(out.toPath(), table.getItems());
-            statusLabel.setText("Exported JSON: " + out.getName());
+            exportFacade.exportToJson(out.toPath(), rows);
+            String scopeDesc = searchFacade.isSearchMode() ? "search results" : "page " + (pageNavigator.getPageIndex() + 1);
+            statusLabel.setText("Exported " + rows.size() + " rows (" + scopeDesc + ") to " + out.getName());
         });
     }
 
@@ -417,7 +489,9 @@ public class MainController {
             statusLabel.setText("Nothing to export");
             return;
         }
-        getOrCreateExportPreviewDialog().show(table.getScene());
+        List<Map<String, Object>> rows = new ArrayList<>(table.getItems());
+        ExportSnapshot snapshot = exportFacade.captureExportSnapshot(rows);
+        getOrCreateExportPreviewDialog().show(table.getScene(), snapshot);
     }
 
     private ExportPreviewDialog getOrCreateExportPreviewDialog() {
@@ -431,9 +505,6 @@ public class MainController {
     // Helpers
     // ---------------------------
 
-    /**
-     * Template method that wraps common UI update boilerplate: try/catch, ErrorAlert, updatePagingButtons.
-     */
     private void executeWithUiUpdate(String errorContext, UiAction action) {
         try {
             action.run();
@@ -441,30 +512,26 @@ public class MainController {
             ErrorAlert.showError(errorContext, ex);
             statusLabel.setText(errorContext);
         } finally {
-            updatePagingButtons();
+            updateControls();
         }
     }
 
-    private String exportNameSuffix() {
-        if (searchFacade.isSearchMode()) {
-            return "search";
-        }
-        return "page-" + (pageNavigator.getPageIndex() + 1);
-    }
-
-    private void updatePagingButtons() {
+    private void updateControls() {
         boolean noFile = !fileLoader.isFileOpen();
         boolean searchMode = searchFacade.isSearchMode();
 
         prevBtn.setDisable(noFile || searchMode || pageNavigator.getPageIndex() == 0);
         nextBtn.setDisable(noFile || searchMode || !pageNavigator.hasNextPage());
+        if (reloadMenuItem != null) {
+            reloadMenuItem.setDisable(noFile);
+        }
     }
 
     private int safeMaxResults() {
         String s = maxResultsField.getText();
         if (s == null || s.isBlank()) {
-            searchFacade.maxResultsProperty().set(500);
-            return 500;
+            maxResultsProperty.set(searchFacade.getDefaultMaxResults());
+            return searchFacade.getDefaultMaxResults();
         }
         try {
             int v = Integer.parseInt(s);
@@ -473,11 +540,11 @@ public class MainController {
                 v = MAX_RESULTS_LIMIT;
                 statusLabel.setText("Max results clamped to " + MAX_RESULTS_LIMIT);
             }
-            searchFacade.maxResultsProperty().set(v);
+            maxResultsProperty.set(v);
             return v;
         } catch (NumberFormatException ex) {
-            searchFacade.maxResultsProperty().set(500);
-            return 500;
+            maxResultsProperty.set(searchFacade.getDefaultMaxResults());
+            return searchFacade.getDefaultMaxResults();
         }
     }
 
@@ -489,12 +556,8 @@ public class MainController {
         activeSearchTask = null;
     }
 
-    /**
-     * Functional interface for UI actions that may throw checked exceptions.
-     */
     @FunctionalInterface
     private interface UiAction {
         void run() throws Exception;
     }
 }
-
