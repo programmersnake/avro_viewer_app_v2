@@ -474,3 +474,67 @@
     -fx-alignment: center;
     -fx-padding: 4 0 4 0;
 }
+
+/* ---------- Segmented Toggle Control ---------- */
+.segmented {
+    -fx-background-color: -c-control;
+    -fx-background-radius: 8;
+    -fx-padding: 3;
+}
+
+.segmented .toggle-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -c-text-muted;
+    -fx-background-radius: 6;
+    -fx-padding: 5 16 5 16;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.segmented .toggle-button:hover {
+    -fx-text-fill: -c-text;
+    -fx-background-color: -c-control-hover;
+}
+
+.segmented .toggle-button:selected {
+    -fx-background-color: -c-surface;
+    -fx-text-fill: -c-text;
+    -fx-effect: dropshadow(gaussian, -c-shadow, 6, 0.1, 0, 1);
+}
+
+/* ---------- Code area ---------- */
+.code-area {
+    -fx-font-family: monospace;
+    -fx-font-size: 12px;
+}
+
+/* ---------- Summary grid ---------- */
+.summary-grid {
+    -fx-hgap: 16;
+    -fx-vgap: 6;
+}
+
+/* ---------- TreeTableView ---------- */
+.tree-table-view {
+    -fx-background-color: -c-surface;
+    -fx-border-color: -c-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.tree-table-row-cell:filled:selected,
+.tree-table-row-cell:selected {
+    -fx-background-color: -c-accent-row-selected;
+    -fx-text-fill: -c-text;
+}
+
+.tree-table-view:focused .tree-table-row-cell:selected {
+    -fx-background-color: -c-accent-row-selected;
+}
+
+/* ---------- Field invalidation (Stage 4) ---------- */
+.field-invalid {
+    -fx-border-color: -c-danger !important;
+    -fx-border-width: 1.5px !important;
+}

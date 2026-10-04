@@ -2,6 +2,8 @@ package com.dkostin.avro_viewer.app.service.api;
 
 import com.dkostin.avro_viewer.app.domain.model.Page;
 
+import com.dkostin.avro_viewer.app.domain.model.fileinfo.AvroFileInfo;
+
 import java.nio.file.Path;
 
 public interface FileLoader {
@@ -13,4 +15,8 @@ public interface FileLoader {
     boolean isFileOpen();
 
     Path getCurrentFile();
+
+    AvroFileInfo getFileInfo() throws Exception;
+
+    long countRecords(Path filePath) throws Exception;
 }

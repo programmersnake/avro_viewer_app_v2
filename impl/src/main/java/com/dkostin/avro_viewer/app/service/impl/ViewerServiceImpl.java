@@ -6,18 +6,17 @@ import com.dkostin.avro_viewer.app.config.FlatteningConfig;
 import com.dkostin.avro_viewer.app.domain.model.ExportScope;
 import com.dkostin.avro_viewer.app.domain.model.ExportSnapshot;
 import com.dkostin.avro_viewer.app.domain.model.Page;
+import com.dkostin.avro_viewer.app.domain.model.SearchControl;
 import com.dkostin.avro_viewer.app.domain.model.SearchRequest;
 import com.dkostin.avro_viewer.app.domain.model.SearchResult;
+import com.dkostin.avro_viewer.app.domain.model.fileinfo.AvroFileInfo;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.domain.state.ViewerState;
 import com.dkostin.avro_viewer.app.service.api.*;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -72,6 +71,21 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
         Page firstPage = fileService.readPage(s.file(), 0, s.pageSize());
         state.updateAndGet(curr -> curr.browsing(curr.file(), 0, curr.pageSize(), firstPage));
         return firstPage;
+    }
+
+    @Override
+    public AvroFileInfo getFileInfo() throws Exception {
+        ViewerState s = state.get();
+        if (!s.isFileOpen()) {
+            throw new IllegalStateException("No file is currently open");
+        }
+        return fileService.readFileInfo(s.file());
+    }
+
+    @Override
+    public long countRecords(Path filePath) throws Exception {
+        Objects.requireNonNull(filePath, "filePath");
+        return fileService.countRecords(filePath);
     }
 
     // ---------------- PageNavigator ----------------
@@ -142,6 +156,30 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
         return page;
     }
 
+    @Override
+    public OptionalLong totalRecords() {
+        ViewerState s = state.get();
+        if (!s.isFileOpen() || s.isSearchMode()) {
+            return OptionalLong.empty();
+        }
+        return fileService.knownRecordCount(s.file());
+    }
+
+    @Override
+    public OptionalInt totalPages() {
+        OptionalLong total = totalRecords();
+        if (total.isEmpty()) {
+            return OptionalInt.empty();
+        }
+        long count = total.getAsLong();
+        if (count <= 0) {
+            return OptionalInt.of(1);
+        }
+        int pageSize = state.get().pageSize();
+        int pages = (int) ((count + pageSize - 1) / pageSize);
+        return OptionalInt.of(pages);
+    }
+
     // ---------------- SearchFacade ----------------
 
     @Override
@@ -170,9 +208,14 @@ public class ViewerServiceImpl implements FileLoader, PageNavigator, SearchFacad
     }
 
     @Override
-    public SearchResult executeSearch(SearchRequest request) throws Exception {
+    public SearchResult executeSearch(SearchRequest request, SearchControl control) throws Exception {
         Objects.requireNonNull(request, "request cannot be null");
-        return fileService.search(request.file(), request.groups(), request.maxResults());
+        return fileService.search(request.file(), request.groups(), request.maxResults(), control);
+    }
+
+    @Override
+    public SearchResult executeSearch(SearchRequest request) throws Exception {
+        return executeSearch(request, SearchControl.noop());
     }
 
     @Override

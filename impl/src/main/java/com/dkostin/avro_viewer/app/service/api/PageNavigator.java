@@ -2,6 +2,9 @@ package com.dkostin.avro_viewer.app.service.api;
 
 import com.dkostin.avro_viewer.app.domain.model.Page;
 
+import java.util.OptionalInt;
+import java.util.OptionalLong;
+
 public interface PageNavigator {
 
     Page nextPage() throws Exception;
@@ -17,4 +20,8 @@ public interface PageNavigator {
     void setPageSize(int pageSize);
 
     boolean hasNextPage();
+
+    OptionalLong totalRecords();
+
+    OptionalInt totalPages();
 }

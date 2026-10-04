@@ -51,6 +51,18 @@ public final class FilterPathValidator {
         }
     }
 
+    /**
+     * Checks whether a single dot-path is valid in the given schema.
+     * Wildcards and blank paths are considered valid.
+     */
+    public static boolean isValidPath(Schema root, String dotPath) {
+        if (root == null || dotPath == null || dotPath.isBlank() || "*".equals(dotPath.trim())) {
+            return true;
+        }
+        String[] segments = dotPath.trim().split("\\.");
+        return isValid(root, segments, 0);
+    }
+
     static boolean isValid(Schema schema, String[] path, int index) {
         if (schema == null) {
             return false;

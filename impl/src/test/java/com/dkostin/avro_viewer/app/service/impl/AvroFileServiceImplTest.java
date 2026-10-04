@@ -2,6 +2,10 @@ package com.dkostin.avro_viewer.app.service.impl;
 
 import com.dkostin.avro_viewer.app.config.FilterPredicateFactory;
 import com.dkostin.avro_viewer.app.domain.model.Page;
+import com.dkostin.avro_viewer.app.domain.model.SearchControl;
+import com.dkostin.avro_viewer.app.domain.model.SearchProgress;
+import com.dkostin.avro_viewer.app.domain.model.SearchResult;
+import com.dkostin.avro_viewer.app.domain.model.StopReason;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
@@ -24,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -124,6 +129,191 @@ class AvroFileServiceImplTest {
         } finally {
             Thread.interrupted();
         }
+    }
+
+    @Test
+    void testReadFileInfoWithMetadata(@TempDir Path tempDir) throws IOException {
+        Path avroFile = tempDir.resolve("info.avro");
+        try (DataFileWriter<GenericRecord> writer = new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+            writer.setMeta("custom.author", "Alice");
+            writer.setMeta("custom.binary", new byte[]{0x00, 0x01, 0x02});
+            writer.create(schema, avroFile.toFile());
+            writer.append(createRecord("1", 42));
+        }
+
+        var info = fileService.readFileInfo(avroFile);
+        assertNotNull(info);
+        assertEquals(avroFile.toAbsolutePath().normalize(), info.path());
+        assertTrue(info.sizeBytes() > 0);
+        assertNotNull(info.lastModified());
+        assertEquals("null", info.codec());
+        assertEquals(schema.toString(), info.schema().toString());
+        assertEquals("Alice", info.metadata().get("custom.author"));
+        assertEquals("<3 bytes, binary>", info.metadata().get("custom.binary"));
+    }
+
+    @Test
+    void testCountRecordsAndCaching(@TempDir Path tempDir) throws IOException {
+        Path avroFile = tempDir.resolve("count.avro");
+        try (DataFileWriter<GenericRecord> writer = new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+            writer.create(schema, avroFile.toFile());
+            for (int i = 0; i < 75; i++) {
+                writer.append(createRecord("id-" + i, i));
+                if (i % 25 == 24) {
+                    writer.sync();
+                }
+            }
+        }
+
+        assertTrue(fileService.knownRecordCount(avroFile).isEmpty());
+
+        long count = fileService.countRecords(avroFile);
+        assertEquals(75, count);
+
+        assertTrue(fileService.knownRecordCount(avroFile).isPresent());
+        assertEquals(75, fileService.knownRecordCount(avroFile).getAsLong());
+
+        fileService.invalidate();
+        assertTrue(fileService.knownRecordCount(avroFile).isEmpty());
+    }
+
+    @Test
+    void testRepositionSessionToPageWithBlockIndexMatchesSequential(@TempDir Path tempDir) throws IOException {
+        Path avroFile = tempDir.resolve("seek.avro");
+        List<GenericRecord> records = new ArrayList<>();
+        for (int i = 0; i < 150; i++) {
+            records.add(createRecord("rec-" + i, i));
+        }
+
+        try (DataFileWriter<GenericRecord> writer = new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+            writer.create(schema, avroFile.toFile());
+            for (int i = 0; i < records.size(); i++) {
+                writer.append(records.get(i));
+                if (i % 20 == 19) {
+                    writer.sync();
+                }
+            }
+        }
+
+        // Populate block index cache first
+        fileService.countRecords(avroFile);
+
+        // Jump to page 5 (pageSize = 10, startRecord = 50)
+        Page jumpedPage = fileService.readPage(avroFile, 5, 10);
+        assertEquals(10, jumpedPage.records().size());
+        assertEquals("rec-50", jumpedPage.records().getFirst().get("id").toString());
+        assertEquals("rec-59", jumpedPage.records().getLast().get("id").toString());
+
+        // Subsequent page 6 should continue sequentially
+        Page nextSeqPage = fileService.readPage(avroFile, 6, 10);
+        assertEquals(10, nextSeqPage.records().size());
+        assertEquals("rec-60", nextSeqPage.records().getFirst().get("id").toString());
+
+        // Jump back to page 2 (startRecord = 20)
+        Page jumpBackPage = fileService.readPage(avroFile, 2, 10);
+        assertEquals(10, jumpBackPage.records().size());
+        assertEquals("rec-20", jumpBackPage.records().getFirst().get("id").toString());
+    }
+
+    @Test
+    void testSearchCompletedReturnsAllMatches(@TempDir Path tempDir) throws Exception {
+        Path avroFile = tempDir.resolve("search_complete.avro");
+        List<GenericRecord> records = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            records.add(createRecord("id-" + i, i));
+        }
+        writeAvroFile(avroFile, schema, records);
+
+        List<FilterGroup> groups = List.of(new FilterGroup(List.of(
+                new FilterCriterion(FilterOption.ofField("value"), MatchOperation.EQUALS, "5")
+        )));
+
+        SearchResult result = fileService.search(avroFile, groups, 100);
+        assertNotNull(result);
+        assertEquals(StopReason.COMPLETED, result.stopReason());
+        assertFalse(result.truncated());
+        assertEquals(1, result.records().size());
+        assertEquals(50, result.scanned());
+        assertEquals(1.0, result.fractionScanned());
+    }
+
+    @Test
+    void testSearchMaxResultsTruncates(@TempDir Path tempDir) throws Exception {
+        Path avroFile = tempDir.resolve("search_max.avro");
+        List<GenericRecord> records = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            records.add(createRecord("id-" + i, i));
+        }
+        writeAvroFile(avroFile, schema, records);
+
+        List<FilterGroup> groups = List.of(new FilterGroup(List.of(
+                new FilterCriterion(FilterOption.ALL_FIELDS, MatchOperation.CONTAINS, "id")
+        )));
+
+        SearchResult result = fileService.search(avroFile, groups, 5);
+        assertNotNull(result);
+        assertEquals(StopReason.MAX_RESULTS, result.stopReason());
+        assertTrue(result.truncated());
+        assertEquals(5, result.records().size());
+        assertEquals(5, result.scanned());
+    }
+
+    @Test
+    void testSearchUserStoppedReturnsPartialResults(@TempDir Path tempDir) throws Exception {
+        Path avroFile = tempDir.resolve("search_stopped.avro");
+        List<GenericRecord> records = new ArrayList<>();
+        for (int i = 0; i < 3000; i++) {
+            records.add(createRecord("id-" + i, i));
+        }
+        writeAvroFile(avroFile, schema, records);
+
+        List<FilterGroup> groups = List.of(new FilterGroup(List.of(
+                new FilterCriterion(FilterOption.ALL_FIELDS, MatchOperation.CONTAINS, "id")
+        )));
+
+        AtomicBoolean stopRequested = new AtomicBoolean(false);
+        SearchControl control = new SearchControl(stopRequested, progress -> {
+            if (progress.scanned() >= 1000) {
+                stopRequested.set(true);
+            }
+        });
+
+        SearchResult result = fileService.search(avroFile, groups, 5000, control);
+        assertNotNull(result);
+        assertEquals(StopReason.USER_STOPPED, result.stopReason());
+        assertTrue(result.truncated());
+        assertTrue(result.records().size() >= 1000 && result.records().size() < 3000);
+        assertTrue(result.scanned() >= 1000 && result.scanned() < 3000);
+    }
+
+    @Test
+    void testSearchReportsMonotonicProgress(@TempDir Path tempDir) throws Exception {
+        Path avroFile = tempDir.resolve("search_progress.avro");
+        List<GenericRecord> records = new ArrayList<>();
+        for (int i = 0; i < 2500; i++) {
+            records.add(createRecord("id-" + i, i));
+        }
+        writeAvroFile(avroFile, schema, records);
+
+        List<FilterGroup> groups = List.of(new FilterGroup(List.of(
+                new FilterCriterion(FilterOption.ofField("value"), MatchOperation.EQUALS, "999")
+        )));
+
+        List<SearchProgress> progressReports = new ArrayList<>();
+        SearchControl control = new SearchControl(new AtomicBoolean(false), progressReports::add);
+
+        SearchResult result = fileService.search(avroFile, groups, 100, control);
+        assertNotNull(result);
+        assertEquals(StopReason.COMPLETED, result.stopReason());
+        assertFalse(progressReports.isEmpty(), "Should report progress at least once");
+
+        long lastScanned = -1;
+        for (SearchProgress p : progressReports) {
+            assertTrue(p.scanned() >= lastScanned, "Progress must be monotonic in scanned records");
+            assertTrue(p.fraction() >= 0.0 && p.fraction() <= 1.0, "Fraction must be within [0.0, 1.0]");
+            lastScanned = p.scanned();
+        }
+        assertEquals(2500, result.scanned());
     }
 
     private GenericRecord createRecord(String id, int value) {

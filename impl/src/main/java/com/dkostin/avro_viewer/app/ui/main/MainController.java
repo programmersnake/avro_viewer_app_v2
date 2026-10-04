@@ -2,6 +2,7 @@ package com.dkostin.avro_viewer.app.ui.main;
 
 import com.dkostin.avro_viewer.app.config.AppContext;
 import com.dkostin.avro_viewer.app.domain.model.*;
+import com.dkostin.avro_viewer.app.domain.model.fileinfo.AvroFileInfo;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.service.api.ExportFacade;
 import com.dkostin.avro_viewer.app.service.api.FileLoader;
@@ -9,6 +10,7 @@ import com.dkostin.avro_viewer.app.service.api.PageNavigator;
 import com.dkostin.avro_viewer.app.service.api.SearchFacade;
 import com.dkostin.avro_viewer.app.ui.Theme;
 import com.dkostin.avro_viewer.app.ui.component.*;
+import com.dkostin.avro_viewer.app.util.PresentationFormatter;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.concurrent.Task;
@@ -16,16 +18,23 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.converter.NumberStringConverter;
 import org.apache.avro.Schema;
 
 import java.io.File;
+import java.io.InterruptedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * MainController:
@@ -53,6 +62,8 @@ public class MainController {
     @FXML
     private MenuItem reloadMenuItem;
     @FXML
+    private Button fileInfoBtn;
+    @FXML
     private TextField maxResultsField;
     @FXML
     private ToggleButton themeToggle;
@@ -72,6 +83,10 @@ public class MainController {
     private Label statusLabel;
     @FXML
     private TableView<Map<String, Object>> table;
+    @FXML
+    private Button applyBtn;
+    @FXML
+    private ProgressBar searchProgressBar;
     private FiltersUi filtersUi;
     private TableViewWindow tableViewWindow;
 
@@ -80,7 +95,9 @@ public class MainController {
     private int lastSearchResultCount = -1;
     private Scene scene;
     private Task<?> activeSearchTask;
+    private volatile SearchControl activeSearchControl;
     private ExportPreviewDialog exportPreviewDialog;
+    private final FileInfoWindow fileInfoWindow = new FileInfoWindow();
 
     public MainController(AppContext ctx) {
         this.fileLoader = ctx.fileLoader();
@@ -103,6 +120,11 @@ public class MainController {
      */
     public void initTheme(Scene scene) {
         this.scene = scene;
+
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.I, KeyCombination.SHORTCUT_DOWN),
+                this::onFileInfo
+        );
 
         // default: dark
         themeToggle.setSelected(true);
@@ -205,11 +227,30 @@ public class MainController {
 
         // propagate to JSON window
         rowViewWindow.syncStyles(scene.getStylesheets());
+        fileInfoWindow.syncStyles(scene.getStylesheets());
     }
 
     // ---------------------------
-    // Filters & Search
+    // File
     // ---------------------------
+
+    @FXML
+    private void onFileInfo() {
+        if (!fileLoader.isFileOpen()) return;
+        try {
+            AvroFileInfo info = fileLoader.getFileInfo();
+            Path current = fileLoader.getCurrentFile();
+            fileInfoWindow.show(
+                    table.getScene(),
+                    info,
+                    () -> pageNavigator.totalRecords(),
+                    () -> fileLoader.countRecords(current),
+                    path -> filtersUi.addFilterFor(path)
+            );
+        } catch (Exception ex) {
+            ErrorAlert.showError("Failed to display file info", ex);
+        }
+    }
 
     @FXML
     private void onOpenFile() {
@@ -233,11 +274,13 @@ public class MainController {
             // labels
             lastSearchResultCount = -1;
             resultsLabel.setText("Active: (none)");
-            pageLabel.setText("Page 1");
+            updatePageLabel();
             statusLabel.setText("Opened: " + file.getName() + " (" + page.records().size() + " records)");
 
             // page size combo must reflect service/state
             pageSizeCombo.setValue(pageNavigator.getPageSize());
+
+            triggerBackgroundRecordCount();
         });
     }
 
@@ -255,10 +298,12 @@ public class MainController {
 
             lastSearchResultCount = -1;
             resultsLabel.setText("Active: (none)");
-            pageLabel.setText("Page 1");
+            updatePageLabel();
             Path current = fileLoader.getCurrentFile();
             String name = current != null ? current.getFileName().toString() : "file";
             statusLabel.setText("Reloaded: " + name + " (" + page.records().size() + " records)");
+
+            triggerBackgroundRecordCount();
         });
     }
 
@@ -271,6 +316,19 @@ public class MainController {
     private void onApplyFilters(ActionEvent ignored) {
         if (!fileLoader.isFileOpen()) {
             statusLabel.setText("Open an .avro file first");
+            return;
+        }
+
+        if (activeSearchTask != null && activeSearchTask.isRunning()) {
+            // User requested stop
+            if (activeSearchControl != null) {
+                activeSearchControl.stopRequested().set(true);
+            }
+            if (applyBtn != null) {
+                applyBtn.setDisable(true);
+            }
+            unbindSearchProperties();
+            statusLabel.setText("Stopping search...");
             return;
         }
 
@@ -292,21 +350,58 @@ public class MainController {
             return;
         }
 
-        // UX: in-progress indication
-        statusLabel.setText("Searching...");
-        resultsLabel.setText("Searching...");
-
+        AtomicBoolean stopRequested = new AtomicBoolean(false);
         Task<SearchResult> task = new Task<>() {
             @Override
             protected SearchResult call() throws Exception {
-                return searchFacade.executeSearch(request);
+                SearchControl searchControl = new SearchControl(stopRequested, progress -> {
+                    if (progress.fraction() > 0) {
+                        updateProgress(progress.fraction(), 1.0);
+                    } else {
+                        updateProgress(-1.0, 1.0);
+                    }
+                    String pct = progress.fraction() > 0
+                            ? String.format(Locale.ROOT, " · %.0f%%", progress.fraction() * 100)
+                            : "";
+                    String msg = String.format(Locale.ROOT, "Scanned %s · matched %s%s",
+                            PresentationFormatter.formatCount(progress.scanned()),
+                            PresentationFormatter.formatCount(progress.matched()),
+                            pct);
+                    updateMessage(msg);
+                });
+                activeSearchControl = searchControl;
+                return searchFacade.executeSearch(request, searchControl);
             }
         };
 
+        activeSearchControl = new SearchControl(stopRequested, p -> {});
         activeSearchTask = task;
 
+        if (applyBtn != null) {
+            applyBtn.setText("■ Stop");
+            applyBtn.getStyleClass().remove("btn-primary");
+            if (!applyBtn.getStyleClass().contains("btn-danger")) {
+                applyBtn.getStyleClass().add("btn-danger");
+            }
+            applyBtn.setDisable(false);
+        }
+        if (searchProgressBar != null) {
+            searchProgressBar.setVisible(true);
+            searchProgressBar.setManaged(true);
+            searchProgressBar.progressProperty().bind(task.progressProperty());
+        }
+        statusLabel.textProperty().bind(task.messageProperty());
+        resultsLabel.setText("Searching...");
+        updateControls();
+
         task.setOnSucceeded(_ -> {
-            if (activeSearchTask != task) return;
+            unbindSearchProperties();
+            resetSearchButtonAndProgress();
+
+            if (activeSearchTask != task) {
+                return;
+            }
+            activeSearchTask = null;
 
             SearchResult result = task.getValue();
             boolean committed = searchFacade.commitSearch(request, result);
@@ -319,24 +414,53 @@ public class MainController {
             tableViewWindow.updateSearchData(result.records(), result.schema());
 
             lastSearchResultCount = result.records().size();
-            String tail = result.truncated() ? " (stopped by maxResults)" : "";
-            resultsLabel.setText("Results: " + result.records().size() + tail);
-            statusLabel.setText("Scanned: " + result.scanned() + ", matched: " + result.records().size() + tail);
+            String tail;
+            if (result.stopReason() == StopReason.USER_STOPPED) {
+                int pct = (int) Math.round(result.fractionScanned() * 100);
+                tail = " (stopped by user" + (pct > 0 ? " at " + pct + "%" : "") + ")";
+                statusLabel.setText("Stopped by user" + (pct > 0 ? " at " + pct + "%" : "") +
+                        " — " + PresentationFormatter.formatCount(result.records().size()) + " matches (scanned " +
+                        PresentationFormatter.formatCount(result.scanned()) + ")");
+            } else if (result.stopReason() == StopReason.MAX_RESULTS) {
+                tail = " (stopped by maxResults)";
+                statusLabel.setText("Scanned: " + PresentationFormatter.formatCount(result.scanned()) +
+                        ", matched: " + PresentationFormatter.formatCount(result.records().size()) + tail);
+            } else {
+                tail = "";
+                statusLabel.setText("Scanned: " + PresentationFormatter.formatCount(result.scanned()) +
+                        ", matched: " + PresentationFormatter.formatCount(result.records().size()));
+            }
 
+            resultsLabel.setText("Results: " + PresentationFormatter.formatCount(result.records().size()) + tail);
             pageLabel.setText("Search");
             updateControls();
         });
 
         task.setOnFailed(_ -> {
-            if (activeSearchTask != task) return;
+            unbindSearchProperties();
+            resetSearchButtonAndProgress();
+
+            if (activeSearchTask != task) {
+                return;
+            }
+            activeSearchTask = null;
 
             Throwable err = task.getException();
-            ErrorAlert.showError("Search failed", err);
+            if (!(err instanceof InterruptedIOException) && !(err instanceof InterruptedException)) {
+                ErrorAlert.showError("Search failed", err);
+            }
             renderCommittedState();
         });
 
         task.setOnCancelled(_ -> {
-            if (activeSearchTask != task) return;
+            unbindSearchProperties();
+            resetSearchButtonAndProgress();
+
+            if (activeSearchTask != task) {
+                return;
+            }
+            activeSearchTask = null;
+
             renderCommittedState();
         });
 
@@ -348,14 +472,14 @@ public class MainController {
     private void renderCommittedState() {
         if (!fileLoader.isFileOpen()) {
             resultsLabel.setText("Active: (none)");
-            pageLabel.setText("Page 1");
+            updatePageLabel();
             statusLabel.setText("");
         } else if (searchFacade.isSearchMode()) {
-            pageLabel.setText("Search");
+            updatePageLabel();
             resultsLabel.setText(lastSearchResultCount >= 0 ? "Results: " + lastSearchResultCount : "Search mode");
             statusLabel.setText("Search mode active");
         } else {
-            pageLabel.setText("Page " + (pageNavigator.getPageIndex() + 1));
+            updatePageLabel();
             resultsLabel.setText("Active: (none)");
             Path current = fileLoader.getCurrentFile();
             String name = current != null ? current.getFileName().toString() : "file";
@@ -380,7 +504,7 @@ public class MainController {
 
         if (!fileLoader.isFileOpen()) {
             statusLabel.setText("");
-            pageLabel.setText("Page 1");
+            updatePageLabel();
             updateControls();
             return;
         }
@@ -389,7 +513,7 @@ public class MainController {
             Page page = searchFacade.clearSearch();
             if (page != null) {
                 tableViewWindow.updateTableData(page.records(), page.schema());
-                pageLabel.setText("Page 1");
+                updatePageLabel();
                 statusLabel.setText("Loaded " + page.records().size() + " records from " + safeSchemaName(page.schema()));
             } else {
                 statusLabel.setText("");
@@ -408,7 +532,7 @@ public class MainController {
             Page page = pageNavigator.prevPage();
             if (page != null) {
                 tableViewWindow.updateTableData(page.records(), page.schema());
-                pageLabel.setText("Page " + (pageNavigator.getPageIndex() + 1));
+                updatePageLabel();
                 statusLabel.setText("Loaded " + page.records().size() + " records (page " + (pageNavigator.getPageIndex() + 1) + ")");
             }
         });
@@ -425,7 +549,7 @@ public class MainController {
             Page page = pageNavigator.nextPage();
             if (page != null) {
                 tableViewWindow.updateTableData(page.records(), page.schema());
-                pageLabel.setText("Page " + (pageNavigator.getPageIndex() + 1));
+                updatePageLabel();
                 statusLabel.setText("Loaded " + page.records().size() + " records (page " + (pageNavigator.getPageIndex() + 1) + ")");
             }
         });
@@ -518,12 +642,97 @@ public class MainController {
 
     private void updateControls() {
         boolean noFile = !fileLoader.isFileOpen();
+        boolean searching = activeSearchTask != null && activeSearchTask.isRunning();
+
+        if (reloadMenuItem != null) {
+            reloadMenuItem.setDisable(noFile);
+        }
+        if (fileInfoBtn != null) {
+            fileInfoBtn.setDisable(noFile);
+        }
+
+        if (searching) {
+            if (applyBtn != null) {
+                applyBtn.setDisable(false);
+            }
+            if (pageSizeCombo != null) pageSizeCombo.setDisable(true);
+            if (maxResultsField != null) maxResultsField.setDisable(true);
+            prevBtn.setDisable(true);
+            nextBtn.setDisable(true);
+            return;
+        }
+
+        if (applyBtn != null) {
+            applyBtn.setDisable(noFile);
+        }
+        if (pageSizeCombo != null) {
+            pageSizeCombo.setDisable(noFile);
+        }
+        if (maxResultsField != null) {
+            maxResultsField.setDisable(noFile);
+        }
+
         boolean searchMode = searchFacade.isSearchMode();
 
         prevBtn.setDisable(noFile || searchMode || pageNavigator.getPageIndex() == 0);
-        nextBtn.setDisable(noFile || searchMode || !pageNavigator.hasNextPage());
-        if (reloadMenuItem != null) {
-            reloadMenuItem.setDisable(noFile);
+        boolean hasNext = pageNavigator.hasNextPage();
+        if (pageNavigator.totalPages().isPresent() && pageNavigator.getPageIndex() + 1 >= pageNavigator.totalPages().getAsInt()) {
+            hasNext = false;
+        }
+        nextBtn.setDisable(noFile || searchMode || !hasNext);
+    }
+
+    private void updatePageLabel() {
+        if (!fileLoader.isFileOpen()) {
+            pageLabel.setText("Page 1");
+            return;
+        }
+        if (searchFacade.isSearchMode()) {
+            pageLabel.setText("Search");
+            return;
+        }
+        int current = pageNavigator.getPageIndex() + 1;
+        OptionalInt total = pageNavigator.totalPages();
+        if (total.isPresent()) {
+            pageLabel.setText("Page " + current + " of " + PresentationFormatter.formatCount(total.getAsInt()));
+        } else {
+            pageLabel.setText("Page " + current);
+        }
+    }
+
+    private void triggerBackgroundRecordCount() {
+        if (!fileLoader.isFileOpen()) return;
+        Path current = fileLoader.getCurrentFile();
+        if (pageNavigator.totalRecords().isPresent()) {
+            updatePageLabel();
+            updateControls();
+            refreshFileInfoIfOpen();
+            return;
+        }
+        Task<Long> countTask = new Task<>() {
+            @Override
+            protected Long call() throws Exception {
+                return fileLoader.countRecords(current);
+            }
+        };
+        countTask.setOnSucceeded(_ -> {
+            updatePageLabel();
+            updateControls();
+            refreshFileInfoIfOpen();
+        });
+        Thread t = new Thread(countTask, "avro-record-counter");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void refreshFileInfoIfOpen() {
+        if (fileInfoWindow.isShowing() && fileLoader.isFileOpen()) {
+            try {
+                AvroFileInfo info = fileLoader.getFileInfo();
+                Path current = fileLoader.getCurrentFile();
+                fileInfoWindow.refresh(info, () -> pageNavigator.totalRecords(), () -> fileLoader.countRecords(current));
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -548,11 +757,38 @@ public class MainController {
         }
     }
 
+    private void unbindSearchProperties() {
+        if (searchProgressBar != null) {
+            searchProgressBar.progressProperty().unbind();
+        }
+        if (statusLabel != null) {
+            statusLabel.textProperty().unbind();
+        }
+    }
+
+    private void resetSearchButtonAndProgress() {
+        if (applyBtn != null) {
+            applyBtn.setText("Apply");
+            applyBtn.getStyleClass().remove("btn-danger");
+            if (!applyBtn.getStyleClass().contains("btn-primary")) {
+                applyBtn.getStyleClass().add("btn-primary");
+            }
+            applyBtn.setDisable(!fileLoader.isFileOpen());
+        }
+        if (searchProgressBar != null) {
+            searchProgressBar.setVisible(false);
+            searchProgressBar.setManaged(false);
+        }
+        activeSearchControl = null;
+    }
+
     private void cancelActiveSearchIfRunning() {
         Task<?> task = activeSearchTask;
         if (task != null && task.isRunning()) {
             task.cancel(true);
         }
+        unbindSearchProperties();
+        resetSearchButtonAndProgress();
         activeSearchTask = null;
     }
 

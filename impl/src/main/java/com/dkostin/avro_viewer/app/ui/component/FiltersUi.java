@@ -1,6 +1,9 @@
 package com.dkostin.avro_viewer.app.ui.component;
 
+import com.dkostin.avro_viewer.app.config.FilterPathValidator;
+import com.dkostin.avro_viewer.app.domain.model.fileinfo.SchemaNode;
 import com.dkostin.avro_viewer.app.domain.model.filter.*;
+import com.dkostin.avro_viewer.app.util.schema.SchemaCatalog;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -32,6 +35,7 @@ public class FiltersUi {
     private final VBox filtersContainer;
     private final ObservableList<FilterOption> availableFields = FXCollections.observableArrayList();
     private final List<FilterGroupState> groups = new ArrayList<>();
+    private Schema currentSchema;
 
     public FiltersUi(VBox filtersContainer) {
         this.filtersContainer = filtersContainer;
@@ -78,24 +82,9 @@ public class FiltersUi {
         group.models.add(model);
         
         // Create controls for the field, operator, and value
-        ComboBox<FilterOption> fieldCombo = new ComboBox<>(availableFields);
+        FieldPathPicker picker = new FieldPathPicker(availableFields, () -> currentSchema);
+        ComboBox<FilterOption> fieldCombo = picker.getComboBox();
         fieldCombo.setPromptText("Field (or a.b.c path)");
-        fieldCombo.setPrefWidth(220);
-        fieldCombo.setEditable(true);
-        fieldCombo.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(FilterOption option) {
-                if (option == null) return "";
-                return option.toString();
-            }
-
-            @Override
-            public FilterOption fromString(String string) {
-                if (string == null || string.isBlank()) return null;
-                if (string.equals("* (All Fields)") || string.equals("*")) return FilterOption.ALL_FIELDS;
-                return FilterOption.ofField(string);
-            }
-        });
 
         ComboBox<MatchOperation> opCombo = new ComboBox<>(FXCollections.observableArrayList(MatchOperation.values()));
         opCombo.setPromptText("Condition");
@@ -109,16 +98,22 @@ public class FiltersUi {
         Button removeBtn = new Button("✕");
         removeBtn.getStyleClass().addAll("btn", "btn-icon");
 
-        // Bind UI fields to the model - use editor textProperty for keystroke updates
+        // Bind picker to model
         fieldCombo.getEditor().textProperty().addListener((_, _, newVal) -> {
             if (newVal == null || newVal.isBlank()) {
                 model.setField(null);
             } else if (newVal.equals("* (All Fields)") || newVal.equals("*")) {
                 model.setField(FilterOption.ALL_FIELDS);
             } else {
-                model.setField(FilterOption.ofField(newVal));
+                FilterOption matched = availableFields.stream()
+                        .filter(opt -> !opt.wildcard() && opt.fieldName().equalsIgnoreCase(newVal.trim()))
+                        .findFirst()
+                        .orElseGet(() -> FilterOption.ofField(newVal.trim()));
+                model.setField(matched);
             }
         });
+        fieldCombo.valueProperty().addListener((_, _, opt) -> model.setField(opt));
+
         opCombo.valueProperty().addListener((_, _, newVal) -> model.setOp(newVal));
         valueField.textProperty().addListener((_, _, newVal) -> model.setValue(newVal));
         // Disable the value field for IS_NULL/NOT_NULL operations
@@ -139,7 +134,7 @@ public class FiltersUi {
         // Create a row representation and add to the container
         FilterRowView view = new FilterRowView(
                 new HBox(10, fieldCombo, opCombo, valueField, removeBtn),
-                fieldCombo, opCombo, valueField, removeBtn, model
+                picker, opCombo, valueField, removeBtn, model
         );
         group.views.add(view);
 
@@ -261,15 +256,51 @@ public class FiltersUi {
     }
 
     /**
+     * Adds or populates a filter row with the specified dot-path.
+     * Fills the first empty row or appends a new row to the last group.
+     */
+    public void addFilterFor(String path) {
+        if (path == null || path.isBlank()) return;
+
+        FilterOption targetOption = availableFields.stream()
+                .filter(opt -> !opt.wildcard() && opt.fieldName().equalsIgnoreCase(path.trim()))
+                .findFirst()
+                .orElseGet(() -> FilterOption.ofField(path.trim()));
+
+        // Look for the first row with empty field
+        for (FilterGroupState group : groups) {
+            for (FilterRowView view : group.views) {
+                if (view.model().getField() == null) {
+                    view.picker().setValue(targetOption);
+                    view.model().setField(targetOption);
+                    return;
+                }
+            }
+        }
+
+        // If no empty row found, append to the last group (or create one if empty)
+        if (groups.isEmpty()) {
+            addGroup();
+        }
+        FilterGroupState lastGroup = groups.getLast();
+        addFilterRow(lastGroup);
+        FilterRowView lastView = lastGroup.views.getLast();
+        lastView.picker().setValue(targetOption);
+        lastView.model().setField(targetOption);
+        rebuildUI();
+    }
+
+    /**
      * Updates the list of available fields in all Comboboxes based on the new Avro schema
      */
     public void updateFieldOptions(Schema schema) {
+        this.currentSchema = schema;
         List<FilterOption> options = new ArrayList<>();
         options.add(FilterOption.ALL_FIELDS); // wildcard always first
         if (schema != null) {
-            schema.getFields().stream()
-                    .map(f -> FilterOption.ofField(f.name()))
-                    .forEach(options::add);
+            for (SchemaNode node : SchemaCatalog.paths(schema)) {
+                options.add(FilterOption.ofField(node.path(), node.typeDisplay(), node.depth()));
+            }
         }
         availableFields.setAll(options);
 
@@ -277,24 +308,27 @@ public class FiltersUi {
         for (FilterGroupState group : groups) {
             for (FilterRowView view : group.views) {
                 FilterOption selected = view.model().getField();
-                if (selected != null && !selected.wildcard() && !selected.fieldName().contains(".")) {
-                    if (!availableFields.contains(selected)) {
-                        // If the previously selected field is missing in the new schema – reset
-                        view.fieldCombo().setValue(null);
+                if (selected != null && !selected.wildcard()) {
+                    if (!FilterPathValidator.isValidPath(schema, selected.fieldName())) {
+                        view.picker().setValue(null);
                         view.model().setField(null);
                     }
                 }
+                view.picker().validateCurrentText();
             }
         }
     }
 
     public record FilterRowView(
             HBox root,
-            ComboBox<FilterOption> fieldCombo,
+            FieldPathPicker picker,
             ComboBox<MatchOperation> opCombo,
             TextField valueField,
             Button removeBtn,
             FilterRowModel model
     ) {
+        public ComboBox<FilterOption> fieldCombo() {
+            return picker.getComboBox();
+        }
     }
 }

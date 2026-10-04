@@ -7,6 +7,7 @@ import com.dkostin.avro_viewer.app.domain.model.filter.FilterCriterion;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterGroup;
 import com.dkostin.avro_viewer.app.domain.model.filter.FilterOption;
 import com.dkostin.avro_viewer.app.domain.model.filter.MatchOperation;
+import com.dkostin.avro_viewer.app.domain.model.fileinfo.AvroFileInfo;
 import com.dkostin.avro_viewer.app.service.api.AvroFileService;
 import com.dkostin.avro_viewer.app.service.api.ExportService;
 import org.apache.avro.Schema;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -129,6 +131,25 @@ class ViewerServiceImplTest {
     }
 
     @Test
+    void testCommitSearchWithUserStoppedResult() throws Exception {
+        Path file1 = Path.of("file1.avro");
+        fakeFileService.nextPageResult = new Page(testSchema, List.of(), true);
+        viewerService.openFile(file1);
+
+        List<FilterGroup> groups = List.of(new FilterGroup(List.of(
+                new FilterCriterion(FilterOption.ofField("name"), MatchOperation.EQUALS, "Alice")
+        )));
+
+        SearchRequest req = viewerService.prepareSearch(groups, 100);
+        SearchResult stoppedResult = new SearchResult(testSchema, List.of(Map.of("name", "Alice")),
+                com.dkostin.avro_viewer.app.domain.model.StopReason.USER_STOPPED, 50, 0.5);
+
+        boolean committed = viewerService.commitSearch(req, stoppedResult);
+        assertTrue(committed, "Should commit user-stopped search result");
+        assertTrue(viewerService.isSearchMode(), "Viewer state must enter search mode on user stop");
+    }
+
+    @Test
     void testCommitSearchStaleRejection() throws Exception {
         Path file1 = Path.of("file1.avro");
         fakeFileService.nextPageResult = new Page(testSchema, List.of(), true);
@@ -206,10 +227,55 @@ class ViewerServiceImplTest {
         assertNotNull(fakeExportService.lastFactory);
     }
 
+    @Test
+    void testGetFileInfoThrowsWhenNoFileOpen() {
+        assertThrows(IllegalStateException.class, () -> viewerService.getFileInfo());
+    }
+
+    @Test
+    void testGetFileInfoReturnsInfoWhenFileOpen() throws Exception {
+        Path file1 = Path.of("file1.avro");
+        viewerService.openFile(file1);
+        AvroFileInfo info = viewerService.getFileInfo();
+        assertNotNull(info);
+        assertEquals(file1, info.path());
+    }
+
+    @Test
+    void testTotalRecordsAndTotalPages() throws Exception {
+        Path file1 = Path.of("file1.avro");
+        // No file open
+        assertTrue(viewerService.totalRecords().isEmpty());
+        assertTrue(viewerService.totalPages().isEmpty());
+
+        viewerService.openFile(file1);
+        // Known count not set yet
+        assertTrue(viewerService.totalRecords().isEmpty());
+        assertTrue(viewerService.totalPages().isEmpty());
+
+        // Known count set
+        fakeFileService.knownRecordCountResult = OptionalLong.of(125);
+        assertEquals(125, viewerService.totalRecords().getAsLong());
+        // Default page size is 50 -> ceil(125 / 50) = 3 pages
+        assertEquals(3, viewerService.totalPages().getAsInt());
+
+        // Count = 0 -> 1 page
+        fakeFileService.knownRecordCountResult = OptionalLong.of(0);
+        assertEquals(1, viewerService.totalPages().getAsInt());
+
+        // Count = 150 -> 3 pages
+        fakeFileService.knownRecordCountResult = OptionalLong.of(150);
+        assertEquals(3, viewerService.totalPages().getAsInt());
+    }
+
     private static class FakeAvroFileService implements AvroFileService {
         boolean throwOnRead = false;
         boolean invalidated = false;
         Page nextPageResult;
+
+        AvroFileInfo fileInfoResult;
+        long recordCountResult = 0;
+        OptionalLong knownRecordCountResult = OptionalLong.empty();
 
         @Override
         public Page readPage(Path file, int pageIndex, int pageSize) throws IOException {
@@ -220,11 +286,33 @@ class ViewerServiceImplTest {
         }
 
         @Override
-        public SearchResult search(Path file, List<FilterGroup> groups, int maxResults) throws Exception {
+        public SearchResult search(Path file, List<FilterGroup> groups, int maxResults, com.dkostin.avro_viewer.app.domain.model.SearchControl control) throws Exception {
             if (throwOnRead) {
                 throw new IOException("Simulated search failure");
             }
             return new SearchResult(null, List.of(), false, 0);
+        }
+
+        @Override
+        public AvroFileInfo readFileInfo(Path file) throws IOException {
+            if (throwOnRead) {
+                throw new IOException("Simulated read failure");
+            }
+            return fileInfoResult != null ? fileInfoResult : new AvroFileInfo(file, 100, java.nio.file.attribute.FileTime.fromMillis(0), "null",
+                    SchemaBuilder.record("Test").fields().requiredString("name").endRecord(), Map.of());
+        }
+
+        @Override
+        public long countRecords(Path file) throws IOException {
+            if (throwOnRead) {
+                throw new IOException("Simulated count failure");
+            }
+            return recordCountResult;
+        }
+
+        @Override
+        public OptionalLong knownRecordCount(Path file) {
+            return knownRecordCountResult;
         }
 
         @Override

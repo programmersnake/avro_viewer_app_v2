@@ -12,16 +12,16 @@ import java.nio.file.StandardCopyOption;
  * and atomically moving the completed file to the destination.
  * On interruption or error, the temporary file is deleted and the destination remains untouched.
  */
-final class AtomicFileWriter {
+public final class AtomicFileWriter {
 
     @FunctionalInterface
-    interface Body {
+    public interface Body {
         void writeTo(Path tmp) throws IOException;
     }
 
     private AtomicFileWriter() {}
 
-    static void write(Path target, Body body) throws IOException {
+    public static void write(Path target, Body body) throws IOException {
         Path abs = target.toAbsolutePath();
         Path parent = abs.getParent();
         if (parent != null) {

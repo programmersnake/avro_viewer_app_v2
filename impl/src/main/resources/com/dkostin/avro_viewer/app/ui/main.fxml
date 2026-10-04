@@ -21,6 +21,10 @@
                 </items>
             </MenuButton>
 
+            <Button fx:id="fileInfoBtn" text="ⓘ Info" onAction="#onFileInfo" styleClass="btn" disable="true">
+                <tooltip><Tooltip text="File info, fields and schema (Shortcut+I)"/></tooltip>
+            </Button>
+
             <Region HBox.hgrow="ALWAYS"/>
 
             <Button text="Export view → JSON" onAction="#onExportJson" styleClass="btn">
@@ -75,7 +79,7 @@
 
                     <Region HBox.hgrow="ALWAYS"/>
 
-                    <Button text="Apply" onAction="#onApplyFilters" styleClass="btn-primary"/>
+                    <Button fx:id="applyBtn" text="Apply" onAction="#onApplyFilters" styleClass="btn-primary"/>
                     <Button text="Clear" onAction="#onClearFilters" styleClass="btn-danger"/>
                 </HBox>
 
@@ -108,6 +112,7 @@
                     <Label fx:id="pageLabel" text="Page 1" styleClass="muted"/>
                     <Button fx:id="nextBtn" text="Next &gt;" onAction="#onNextPage" styleClass="btn"/>
                     <Region HBox.hgrow="ALWAYS"/>
+                    <ProgressBar fx:id="searchProgressBar" prefWidth="120" visible="false" managed="false"/>
                     <Label fx:id="statusLabel" text="Loaded 50 records from data.avro." styleClass="muted"/>
                 </HBox>
             </VBox>
