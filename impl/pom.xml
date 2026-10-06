@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>avro-viewer-app-impl</artifactId>
-    <packaging>jar</packaging>
+    <packaging>jar</packaging> 
 
     <properties>
         <lombok.version>1.18.42</lombok.version>
