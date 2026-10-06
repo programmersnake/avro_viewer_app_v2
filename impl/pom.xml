@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.dkostin.avro_viewer.app</groupId>
         <artifactId>avro-viewer-app</artifactId>
-        <version>1.10-SNAPSHOT</version>
+        <version>1.11-SNAPSHOT</version>
     </parent>
 
     <artifactId>avro-viewer-app-impl</artifactId>
@@ -13,11 +13,11 @@
 
     <properties>
         <lombok.version>1.18.42</lombok.version>
-        <javafx.version>21.0.3</javafx.version>
+        <javafx.version>23.0.1</javafx.version>
         <avro.version>1.12.1</avro.version>
         <snappy.version>1.1.10.5</snappy.version>
         <logback.version>1.5.13</logback.version>
-        <jackson.version>3.1.5</jackson.version>
+        <jackson.version>3.2.0</jackson.version>
     </properties>
 
     <dependencies>
@@ -103,7 +103,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.12.1</version>
+                <version>3.16.0</version>
                 <configuration>
                     <release>25</release>
                     <annotationProcessorPaths>
@@ -114,6 +114,12 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
             </plugin>
 
             <plugin>
