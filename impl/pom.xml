@@ -13,7 +13,7 @@
 
     <properties>
         <lombok.version>1.18.42</lombok.version>
-        <javafx.version>21.0.3</javafx.version>
+        <javafx.version>23.0.1</javafx.version>
         <avro.version>1.12.1</avro.version>
         <snappy.version>1.1.10.5</snappy.version>
         <logback.version>1.5.13</logback.version>
